@@ -560,6 +560,7 @@ public class APIProviderHostObject extends ScriptableObject {
         String wsdl = (String) apiData.get("wsdl", apiData);
         String wadl = (String) apiData.get("wadl", apiData);
         String endpointSecured = (String) apiData.get("endpointSecured", apiData);
+        String endpointAuthDigest = (String) apiData.get("endpointAuthDigest", apiData);
         String endpointUTUsername = (String) apiData.get("endpointUTUsername", apiData);
         String endpointUTPassword = (String) apiData.get("endpointUTPassword", apiData);
             
@@ -594,8 +595,15 @@ public class APIProviderHostObject extends ScriptableObject {
         	api.setEndpointSecured(true);
         	api.setEndpointUTUsername(endpointUTUsername);
         	api.setEndpointUTPassword(endpointUTPassword);
+            if("digestAuth".equals(endpointAuthDigest)) {
+                api.setEndpointAuthDigest(true);
+            }
+            else{
+                api.setEndpointAuthDigest(false);
+            }
         } else {
             api.setEndpointSecured(false);
+            api.setEndpointAuthDigest(false);
             api.setEndpointUTUsername(null);
             api.setEndpointUTPassword(null);
         }
@@ -1059,6 +1067,7 @@ public class APIProviderHostObject extends ScriptableObject {
         String bizOwnerEmail = (String) apiData.get("bizOwnerEmail", apiData);
 
         String endpointSecured = (String) apiData.get("endpointSecured", apiData);
+        String endpointAuthDigest = (String) apiData.get("endpointAuthDigest", apiData);
         String endpointUTUsername = (String) apiData.get("endpointUTUsername", apiData);
         String endpointUTPassword = (String) apiData.get("endpointUTPassword", apiData);
 
@@ -1308,6 +1317,12 @@ public class APIProviderHostObject extends ScriptableObject {
             api.setEndpointSecured(true);
             api.setEndpointUTUsername(endpointUTUsername);
             api.setEndpointUTPassword(endpointUTPassword);
+            if("digestAuth".equals(endpointAuthDigest)){
+                api.setEndpointAuthDigest(true);
+            }
+            else{
+                api.setEndpointAuthDigest(false);
+            }
         }
 
         checkFileSize(fileHostObject);
@@ -1495,6 +1510,7 @@ public class APIProviderHostObject extends ScriptableObject {
         	visibleTenants = (String) apiData.get("visibleTenants", apiData);
         }
         String endpointSecured = (String) apiData.get("endpointSecured", apiData);
+        String endpointAuthDigest = (String) apiData.get("endpointAuthType", apiData);
         String endpointUTUsername = (String) apiData.get("endpointUTUsername", apiData);
         String endpointUTPassword = (String) apiData.get("endpointUTPassword", apiData);
 
@@ -1787,6 +1803,9 @@ public class APIProviderHostObject extends ScriptableObject {
             api.setEndpointSecured(true);
             api.setEndpointUTUsername(endpointUTUsername);
             api.setEndpointUTPassword(endpointUTPassword);
+            if("digestAuth".equals(endpointAuthDigest)){
+                api.setEndpointAuthDigest(true);
+            }
         }
 
         try {
