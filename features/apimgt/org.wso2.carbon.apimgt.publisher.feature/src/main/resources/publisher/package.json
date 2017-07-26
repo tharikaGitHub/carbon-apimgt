@@ -30,7 +30,7 @@
     "react-tap-event-plugin": "^2.0.1",
     "react-toastify": "^1.7.0",
     "swagger-client": "2.1.27",
-    "react-quill": "1.0.0"
+    "react-quill": "^1.0.0"
   },
   "devDependencies": {
     "babel-core": "^6.24.1",
