@@ -1,10 +1,10 @@
 <%
-var addUser = function (username, password, fields) {
+var addUser = function (username, password, fields, userConsent) {
     var log = new Log(),
             store = jagg.module("manager").getAPIStoreObj();
 
     try {
-        store.addUser(username, password, fields);
+        store.addUser(username, password, fields, userConsent);
         if (log.isDebugEnabled()) {
             log.debug("addUser");
         }

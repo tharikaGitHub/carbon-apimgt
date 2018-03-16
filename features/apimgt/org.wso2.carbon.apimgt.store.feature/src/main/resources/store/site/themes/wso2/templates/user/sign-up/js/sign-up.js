@@ -35,36 +35,28 @@ $(document).ready(function() {
                     + tenantDomain;
         }
 
+        var userConsent;
+        if (hasPurposes == 'true') {
+            var receipt = addReceiptInformation(container);
+            userConsent = JSON.stringify(receipt);
+        }
     	jagg.post("/site/blocks/user/sign-up/ajax/user-add.jag", {
             action:"addUser",
             username:fullUserName,
             password:$('#newPassword').val(),
-            allFieldsValues:allFieldsValues
+            allFieldsValues:allFieldsValues,
+            userConsent:userConsent
         }, function (result) {
             if (result.error == false) {
                 if(result.showWorkflowTip) {
                     jagg.message({content: i18n.t("User account awaiting Administrator approval.") ,type:"info",
                         cbk:function() {
-                            if (hasPurposes == 'true') {
-                                var receipt = addReceiptInformation(container);
-                                $('<input />').attr('type', 'hidden')
-                                    .attr('name', "consent")
-                                    .attr('value', JSON.stringify(receipt))
-                                    .appendTo('#signUpRedirectForm');
-                            }
                             $('#signUpRedirectForm').submit();
                         }
                     });
                 } else {
                     jagg.message({content: i18n.t("User added successfully. You can now sign into the API store using the new user account."), type:"info",
                         cbk:function() {
-                            if (hasPurposes == 'true') {
-                                var receipt = addReceiptInformation(container);
-                                $('<input />').attr('type', 'hidden')
-                                    .attr('name', "consent")
-                                    .attr('value', JSON.stringify(receipt))
-                                    .appendTo('#signUpRedirectForm');
-                            }
                             $('#signUpRedirectForm').submit();
                         }
                     });

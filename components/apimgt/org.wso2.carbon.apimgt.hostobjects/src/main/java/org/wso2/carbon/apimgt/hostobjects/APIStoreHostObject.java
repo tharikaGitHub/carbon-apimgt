@@ -3622,6 +3622,7 @@ public class APIStoreHostObject extends ScriptableObject {
             String username = args[0].toString();
             String password = args[1].toString();
             String fields = args[2].toString();
+            String userConsent = args[3].toString();
 
             APIManagerConfiguration config = HostObjectComponent.getAPIManagerConfiguration();
 

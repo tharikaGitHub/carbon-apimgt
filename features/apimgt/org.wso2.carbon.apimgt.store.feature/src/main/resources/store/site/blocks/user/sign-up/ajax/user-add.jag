@@ -17,7 +17,7 @@ var validation_errors = jagg.validateInputs(validation);
     response.contentType = "application/json; charset=UTF-8";
     response.addHeader('Pragma', 'No-cache');
     response.addHeader('Cache-control', 'no-cache');
-    var mod, obj, password, allFieldsValues, result, username,
+    var mod, obj, password, allFieldsValues, result, username, userConsent,
             msg = require("/site/conf/ui-messages.jag"),
             action = request.getParameter("action"),showWorkflowTip,
             user = jagg.getUser();
@@ -38,6 +38,10 @@ var validation_errors = jagg.validateInputs(validation);
         username = request.getParameter("username");
         password = request.getParameter("password");
 		allFieldsValues = request.getParameter("allFieldsValues");
+		userConsent = request.getParameter("userConsent");
+		if(userConsent == null) {
+		    userConsent = "";
+		}
         
         mod = jagg.module("user");
         var userExist = mod.checkIfUserExsits(username);
@@ -48,7 +52,7 @@ var validation_errors = jagg.validateInputs(validation);
             };          
        
         } else {
-             result = mod.addUser(username, password, allFieldsValues);
+             result = mod.addUser(username, password, allFieldsValues, userConsent);
              subscriberCheckResult = mod.checkIfSubscriberRolePresent(username);
         }
        

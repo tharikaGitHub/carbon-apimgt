@@ -36,6 +36,7 @@ import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.util.AXIOMUtil;
 import org.apache.axis2.transport.http.HTTPConstants;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpStatus;
@@ -78,6 +79,20 @@ public final class SelfSignUpUtil {
 	private static final String PURPOSE = "purpose";
 	private static final String PII_CATEGORIES = "piiCategories";
 	private static final String DEFAULT = "DEFAULT";
+	private static final String JURISDICTION_KEY = "jurisdiction";
+	private static final String COLLECTION_METHOD_KEY = "collectionMethod";
+	private static final String LANGUAGE_KEY = "language";
+	private static final String PII_PRINCIPAL_ID_KEY = "piiPrincipalId";
+	private static final String POLICY_URL_KEY = "policyURL";
+	private static final String PRIMARY_USER_STORE_DOMAIN = "PRIMARY";
+	private static final String USER_STORE_DOMAIN_SEPARATOR = "/";
+	private static final String SERVICES = "services";
+	private static final String CONSENT_TYPE_KEY = "consentType";
+	private static final String PRIMARY_PURPOSE_KEY = "primaryPurpose";
+	private static final String THRID_PARTY_DISCLOSURE_KEY = "thirdPartyDisclosure";
+	private static final String TERMINATION_KEY = "termination";
+	private static final String VALIDITY_KEY = "validity";
+	private static final String PII_CATEGORY = "piiCategory";
 
 	/**
 	 * retrieve self signup configuration from the cache. if cache mises, load
@@ -433,4 +448,102 @@ public final class SelfSignUpUtil {
         JSONArray piiCategories = (JSONArray) purpose.get(PII_CATEGORIES);
         return !piiCategories.isEmpty();
     }
+
+	/**
+	 * Builds consent string according to consent API. This string can be used as the body of add receipt API
+	 *
+	 * @param username               Username of the user.
+     * @param userStoreDomain        User store domain of the user.
+	 * @param consent                Consent String which contains services.
+	 * @param jurisdiction           Jurisdiction.
+	 * @param collectionMethod       Collection Method.
+	 * @param language               Language.
+	 * @param policyURL              Policy URL.
+	 * @param consentType            Consent Type.
+	 * @param isPrimaryPurpose       Whether this this receipt is for primary purpose.
+	 * @param isThirdPartyDisclosure Whether this receipt can be disclosed to thrid parties.
+	 * @param termination            Termination date.
+	 * @return Consent string which contains above facts.
+     * @throws ParseException when parsing the consent string.
+	 */
+	public static String buildConsentString(String username, String userStoreDomain, String consent, String jurisdiction,
+			String collectionMethod, String language, String policyURL,
+			String consentType, boolean isPrimaryPurpose, boolean
+			isThirdPartyDisclosure, String termination) throws ParseException {
+
+		if (StringUtils.isEmpty(consent)) {
+			if (log.isDebugEnabled()) {
+				log.debug("Empty consent string. Hence returning without building consent");
+			}
+			return consent;
+		}
+        String piiPrincipalId = getPiiPrincipalID(username, userStoreDomain);
+        JSONParser parser = new JSONParser();
+        JSONObject receipt = (JSONObject) parser.parse(consent);
+		receipt.put(JURISDICTION_KEY, jurisdiction);
+		receipt.put(COLLECTION_METHOD_KEY, collectionMethod);
+		receipt.put(LANGUAGE_KEY, language);
+		receipt.put(PII_PRINCIPAL_ID_KEY, piiPrincipalId);
+		receipt.put(POLICY_URL_KEY, policyURL);
+		buildServices(receipt, consentType, isPrimaryPurpose, isThirdPartyDisclosure, termination);
+		if (log.isDebugEnabled()) {
+			log.debug("Built consent from self signup util : " + consent);
+		}
+
+		return receipt.toString();
+	}
+
+	private static String getPiiPrincipalID(String username, String userStoreDomain) {
+
+		String piiPrincipalId;
+
+		if (StringUtils.isNotBlank(userStoreDomain) && !PRIMARY_USER_STORE_DOMAIN
+				.equals(userStoreDomain)) {
+			piiPrincipalId = userStoreDomain + USER_STORE_DOMAIN_SEPARATOR
+					+ username;
+		} else {
+			piiPrincipalId = username;
+		}
+		return piiPrincipalId;
+	}
+
+	private static void buildServices(JSONObject receipt, String consentType, boolean isPrimaryPurpose, boolean
+			isThirdPartyDisclosure, String termination) {
+
+		JSONArray services = (JSONArray) receipt.get(SERVICES);
+		for (int serviceIndex = 0; serviceIndex < services.size(); serviceIndex++) {
+			buildService((JSONObject) services.get(serviceIndex), consentType, isPrimaryPurpose,
+					isThirdPartyDisclosure, termination);
+		}
+	}
+
+	private static void buildService(JSONObject service, String consentType, boolean isPrimaryPurpose, boolean
+			isThirdPartyDisclosure, String termination) {
+
+		JSONArray purposes = (JSONArray) service.get(PURPOSES);
+
+		for (int purposeIndex = 0; purposeIndex < purposes.size(); purposeIndex++) {
+			buildPurpose((JSONObject) purposes.get(purposeIndex), consentType, isPrimaryPurpose,
+					isThirdPartyDisclosure, termination);
+		}
+	}
+
+	private static void buildPurpose(JSONObject purpose, String consentType, boolean isPrimaryPurpose, boolean
+			isThirdPartyDisclosure, String termination) {
+
+		purpose.put(CONSENT_TYPE_KEY, consentType);
+		purpose.put(PRIMARY_PURPOSE_KEY, isPrimaryPurpose);
+		purpose.put(THRID_PARTY_DISCLOSURE_KEY, isThirdPartyDisclosure);
+		purpose.put(TERMINATION_KEY, termination);
+		JSONArray piiCategories = (JSONArray) purpose.get(PII_CATEGORY);
+		for (int categoryIndex = 0; categoryIndex < piiCategories.size(); categoryIndex++) {
+			buildCategory((JSONObject) piiCategories.get(categoryIndex), termination);
+		}
+	}
+
+	private static void buildCategory(JSONObject piiCategory, String validity) {
+
+		piiCategory.put(VALIDITY_KEY, validity);
+	}
+
 }
