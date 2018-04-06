@@ -64,230 +64,215 @@ import org.wso2.carbon.user.api.UserStoreException;
 import org.wso2.carbon.user.core.UserCoreConstants;
 import org.wso2.carbon.user.core.UserRealm;
 
-
 /**
  * This class contains the utility methods used for self signup
  */
 public final class SelfSignUpUtil {
 
-	private static final Log log = LogFactory.getLog(SelfSignUpUtil.class);
+    private static final Log log = LogFactory.getLog(SelfSignUpUtil.class);
 
-	private static final String CONSENT_API_RELATIVE_PATH = "api/identity/consent-mgt/v1.0";
-	private static final String PURPOSE_ID = "purposeId";
-	private static final String PURPOSES_ENDPOINT_RELATIVE_PATH = "/consents/purposes";
-	private static final String PURPOSES = "purposes";
-	private static final String PURPOSE = "purpose";
-	private static final String PII_CATEGORIES = "piiCategories";
-	private static final String DEFAULT = "DEFAULT";
-	private static final String JURISDICTION_KEY = "jurisdiction";
-	private static final String COLLECTION_METHOD_KEY = "collectionMethod";
-	private static final String LANGUAGE_KEY = "language";
-	private static final String PII_PRINCIPAL_ID_KEY = "piiPrincipalId";
-	private static final String POLICY_URL_KEY = "policyURL";
-	private static final String PRIMARY_USER_STORE_DOMAIN = "PRIMARY";
-	private static final String USER_STORE_DOMAIN_SEPARATOR = "/";
-	private static final String SERVICES = "services";
-	private static final String CONSENT_TYPE_KEY = "consentType";
-	private static final String PRIMARY_PURPOSE_KEY = "primaryPurpose";
-	private static final String THRID_PARTY_DISCLOSURE_KEY = "thirdPartyDisclosure";
-	private static final String TERMINATION_KEY = "termination";
-	private static final String VALIDITY_KEY = "validity";
-	private static final String PII_CATEGORY = "piiCategory";
+    private static final String CONSENT_API_RELATIVE_PATH = "api/identity/consent-mgt/v1.0";
+    private static final String PURPOSE_ID = "purposeId";
+    private static final String PURPOSES_ENDPOINT_RELATIVE_PATH = "/consents/purposes";
+    private static final String PURPOSES = "purposes";
+    private static final String PURPOSE = "purpose";
+    private static final String PII_CATEGORIES = "piiCategories";
+    private static final String DEFAULT = "DEFAULT";
+    private static final String JURISDICTION_KEY = "jurisdiction";
+    private static final String COLLECTION_METHOD_KEY = "collectionMethod";
+    private static final String LANGUAGE_KEY = "language";
+    private static final String PII_PRINCIPAL_ID_KEY = "piiPrincipalId";
+    private static final String POLICY_URL_KEY = "policyURL";
+    private static final String PRIMARY_USER_STORE_DOMAIN = "PRIMARY";
+    private static final String USER_STORE_DOMAIN_SEPARATOR = "/";
+    private static final String SERVICES = "services";
+    private static final String CONSENT_TYPE_KEY = "consentType";
+    private static final String PRIMARY_PURPOSE_KEY = "primaryPurpose";
+    private static final String THRID_PARTY_DISCLOSURE_KEY = "thirdPartyDisclosure";
+    private static final String TERMINATION_KEY = "termination";
+    private static final String VALIDITY_KEY = "validity";
+    private static final String PII_CATEGORY = "piiCategory";
 
-	/**
-	 * retrieve self signup configuration from the cache. if cache mises, load
-	 * to the cache from
-	 * the registry and return configuration
-	 * 
-	 * @param tenantDomain
-	 *            Domain name of the tenant
-	 * @return UserRegistrationConfigDTO self signup configuration for the
-	 *         tenant
-	 * @throws APIManagementException
-	 */
-	public static UserRegistrationConfigDTO getSignupConfiguration(String tenantDomain)
-			throws APIManagementException {
-		UserRegistrationConfigDTO config = null;
-		String currentFlowDomain =
-				PrivilegedCarbonContext.getThreadLocalCarbonContext()
-				.getTenantDomain();
-		boolean isTenantFlowStarted = false;
-		try {
+    /**
+     * retrieve self signup configuration from the cache. if cache mises, load
+     * to the cache from
+     * the registry and return configuration
+     *
+     * @param tenantDomain Domain name of the tenant
+     * @return UserRegistrationConfigDTO self signup configuration for the tenant
+     * @throws APIManagementException
+     */
+    public static UserRegistrationConfigDTO getSignupConfiguration(String tenantDomain) throws APIManagementException {
+        UserRegistrationConfigDTO config = null;
+        String currentFlowDomain = PrivilegedCarbonContext.getThreadLocalCarbonContext().getTenantDomain();
+        boolean isTenantFlowStarted = false;
+        try {
 
 			/* start the correct tenant flow to load the tenant's registry*/
-			if (tenantDomain != null &&
-					!MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals(tenantDomain)) {
-				if (!currentFlowDomain.equals(tenantDomain)) {
-					/* if the current flow is not the one related to the domain */
-					isTenantFlowStarted = true;
-					PrivilegedCarbonContext.startTenantFlow();
-					PrivilegedCarbonContext.getThreadLocalCarbonContext()
-					.setTenantDomain(tenantDomain, true);
-				}
-			}
-			config = getSignupConfigurationFromRegistry(tenantDomain);
-		} finally {
-			if (isTenantFlowStarted) {
-				PrivilegedCarbonContext.endTenantFlow();
-			}
-		}	
+            if (tenantDomain != null && !MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals(tenantDomain)) {
+                if (!currentFlowDomain.equals(tenantDomain)) {
+                    /* if the current flow is not the one related to the domain */
+                    isTenantFlowStarted = true;
+                    PrivilegedCarbonContext.startTenantFlow();
+                    PrivilegedCarbonContext.getThreadLocalCarbonContext().setTenantDomain(tenantDomain, true);
+                }
+            }
+            config = getSignupConfigurationFromRegistry(tenantDomain);
+        } finally {
+            if (isTenantFlowStarted) {
+                PrivilegedCarbonContext.endTenantFlow();
+            }
+        }
 
-		return config;
-	}
+        return config;
+    }
 
-	/**
-	 * load configuration from the registry
-	 * 
-	 * @param tenantDomain - The Tenant Domain
-	 * @return - A UserRegistrationConfigDTO instance
-	 * @throws APIManagementException
-	 */
+    /**
+     * load configuration from the registry
+     *
+     * @param tenantDomain - The Tenant Domain
+     * @return - A UserRegistrationConfigDTO instance
+     * @throws APIManagementException
+     */
     private static UserRegistrationConfigDTO getSignupConfigurationFromRegistry(String tenantDomain)
-                                                                                      throws APIManagementException {
+            throws APIManagementException {
 
         UserRegistrationConfigDTO config = null;
 
         try {
 
-            int tenantId =
-                           ServiceReferenceHolder.getInstance().getRealmService().getTenantManager()
-                                                 .getTenantId(tenantDomain);
+            int tenantId = ServiceReferenceHolder.getInstance().getRealmService().getTenantManager()
+                    .getTenantId(tenantDomain);
             APIUtil.loadTenantRegistry(tenantId);
-            Registry registry =
-                                (Registry) PrivilegedCarbonContext.getThreadLocalCarbonContext()
-                                                                  .getRegistry(RegistryType.SYSTEM_GOVERNANCE);
+            Registry registry = (Registry) PrivilegedCarbonContext.getThreadLocalCarbonContext()
+                    .getRegistry(RegistryType.SYSTEM_GOVERNANCE);
             if (registry.resourceExists(APIConstants.SELF_SIGN_UP_CONFIG_LOCATION)) {
                 Resource resource = registry.get(APIConstants.SELF_SIGN_UP_CONFIG_LOCATION);
                 String content = new String((byte[]) resource.getContent(), Charset.defaultCharset());
                 OMElement element = AXIOMUtil.stringToOM(content);
                 config = new UserRegistrationConfigDTO();
-                
-                
-                config.setSignUpDomain(element.getFirstChildWithName(
-                                                      new QName(APIConstants.SELF_SIGN_UP_REG_DOMAIN_ELEM)).getText());
+
+                config.setSignUpDomain(
+                        element.getFirstChildWithName(new QName(APIConstants.SELF_SIGN_UP_REG_DOMAIN_ELEM)).getText());
                 config.setAdminUserName(APIUtil.replaceSystemProperty(
-                                                      element.getFirstChildWithName(new QName(
-                                                                APIConstants.SELF_SIGN_UP_REG_USERNAME)).getText()));
+                        element.getFirstChildWithName(new QName(APIConstants.SELF_SIGN_UP_REG_USERNAME)).getText()));
                 config.setAdminPassword(APIUtil.replaceSystemProperty(
-                                                      element.getFirstChildWithName(new QName(
-                                                                APIConstants.SELF_SIGN_UP_REG_PASSWORD)).getText()));
-                config.setSignUpEnabled(Boolean.parseBoolean(element.getFirstChildWithName(
-                                                      new QName(APIConstants.SELF_SIGN_UP_REG_ENABLED)).getText()));
-                
-                OMElement rolesElement = element.getFirstChildWithName(new QName(APIConstants.SELF_SIGN_UP_REG_ROLES_ELEM));
-                
-                Iterator roleListIterator = rolesElement.getChildrenWithLocalName(APIConstants.SELF_SIGN_UP_REG_ROLE_ELEM);
-                
+                        element.getFirstChildWithName(new QName(APIConstants.SELF_SIGN_UP_REG_PASSWORD)).getText()));
+                config.setSignUpEnabled(Boolean.parseBoolean(
+                        element.getFirstChildWithName(new QName(APIConstants.SELF_SIGN_UP_REG_ENABLED)).getText()));
+
+                OMElement rolesElement = element
+                        .getFirstChildWithName(new QName(APIConstants.SELF_SIGN_UP_REG_ROLES_ELEM));
+
+                Iterator roleListIterator = rolesElement
+                        .getChildrenWithLocalName(APIConstants.SELF_SIGN_UP_REG_ROLE_ELEM);
+
                 while (roleListIterator.hasNext()) {
                     OMElement roleElement = (OMElement) roleListIterator.next();
-                    String tmpRole = roleElement.getFirstChildWithName(
-                                                 new QName(APIConstants.SELF_SIGN_UP_REG_ROLE_NAME_ELEMENT)).getText();
-                    boolean tmpIsExternal = Boolean.parseBoolean(roleElement.getFirstChildWithName(
-                                                 new QName(APIConstants.SELF_SIGN_UP_REG_ROLE_IS_EXTERNAL)).getText());
+                    String tmpRole = roleElement
+                            .getFirstChildWithName(new QName(APIConstants.SELF_SIGN_UP_REG_ROLE_NAME_ELEMENT))
+                            .getText();
+                    boolean tmpIsExternal = Boolean.parseBoolean(
+                            roleElement.getFirstChildWithName(new QName(APIConstants.SELF_SIGN_UP_REG_ROLE_IS_EXTERNAL))
+                                    .getText());
                     config.getRoles().put(tmpRole, tmpIsExternal);
                 }
-			}
-		} catch (RegistryException e) {
-			throw new APIManagementException("Error while reading registry " +
-					APIConstants.SELF_SIGN_UP_CONFIG_LOCATION, e);
-		} catch (XMLStreamException e) {
-		    throw new APIManagementException("Error while parsing configuration " +
-                    APIConstants.SELF_SIGN_UP_CONFIG_LOCATION, e);
+            }
+        } catch (RegistryException e) {
+            throw new APIManagementException(
+                    "Error while reading registry " + APIConstants.SELF_SIGN_UP_CONFIG_LOCATION, e);
+        } catch (XMLStreamException e) {
+            throw new APIManagementException(
+                    "Error while parsing configuration " + APIConstants.SELF_SIGN_UP_CONFIG_LOCATION, e);
         } catch (UserStoreException e) {
-            throw new APIManagementException("Error in retrieving Tenant Information while reading SignUp "
-                                             + "configuration", e);
+            throw new APIManagementException(
+                    "Error in retrieving Tenant Information while reading SignUp " + "configuration", e);
         }
-		return config;
-	}
+        return config;
+    }
 
-	/**
-	 * Check whether user can signup to the tenant domain
-	 * 
-	 * @param userName - The user name
-	 * @param realm - The realm
-	 * @return - A boolean value
-	 * @throws APIManagementException
-	 */
-	public static boolean isUserNameWithAllowedDomainName(String userName, UserRealm realm)
-			throws APIManagementException {
-		int index;
-		index = userName.indexOf('/');
+    /**
+     * Check whether user can signup to the tenant domain
+     *
+     * @param userName - The user name
+     * @param realm    - The realm
+     * @return - A boolean value
+     * @throws APIManagementException
+     */
+    public static boolean isUserNameWithAllowedDomainName(String userName, UserRealm realm)
+            throws APIManagementException {
+        int index;
+        index = userName.indexOf('/');
 
-		// Check whether we have a secondary UserStoreManager setup.
-		if (index > 0) {
-			// Using the short-circuit. User name comes with the domain name.
-			try {
-				return !realm.getRealmConfiguration()
-						.isRestrictedDomainForSlefSignUp(userName.substring(0, index));
-			} catch (UserStoreException e) {
-				throw new APIManagementException(e.getMessage(), e);				
-			}
-		}
+        // Check whether we have a secondary UserStoreManager setup.
+        if (index > 0) {
+            // Using the short-circuit. User name comes with the domain name.
+            try {
+                return !realm.getRealmConfiguration().isRestrictedDomainForSlefSignUp(userName.substring(0, index));
+            } catch (UserStoreException e) {
+                throw new APIManagementException(e.getMessage(), e);
+            }
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	/**
-	 * get the full role name list (ex: internal/subscriber)
-	 * 
-	 * @param config - A UserRegistrationConfigDTO instance
-	 * @return - A list object containing role names
-	 */
-	public static List<String> getRoleNames(UserRegistrationConfigDTO config) {
+    /**
+     * get the full role name list (ex: internal/subscriber)
+     *
+     * @param config - A UserRegistrationConfigDTO instance
+     * @return - A list object containing role names
+     */
+    public static List<String> getRoleNames(UserRegistrationConfigDTO config) {
 
-		ArrayList<String> roleNamesArr = new ArrayList<String>();
-		Map<String, Boolean> roles = config.getRoles();
-		for (Map.Entry<String, Boolean> entry : roles.entrySet()) {
-			String roleName;
-			if (entry.getValue()) {
-				// external role
-				roleName =
-						config.getSignUpDomain().toUpperCase() +
-						UserCoreConstants.DOMAIN_SEPARATOR + entry.getKey();
-			} else {
-				// internal role
-				roleName =
-						UserCoreConstants.INTERNAL_DOMAIN + UserCoreConstants.DOMAIN_SEPARATOR +
-						entry.getKey();
-			}
-			roleNamesArr.add(roleName);
-		}
-		return roleNamesArr;
+        ArrayList<String> roleNamesArr = new ArrayList<String>();
+        Map<String, Boolean> roles = config.getRoles();
+        for (Map.Entry<String, Boolean> entry : roles.entrySet()) {
+            String roleName;
+            if (entry.getValue()) {
+                // external role
+                roleName = config.getSignUpDomain().toUpperCase() + UserCoreConstants.DOMAIN_SEPARATOR + entry.getKey();
+            } else {
+                // internal role
+                roleName = UserCoreConstants.INTERNAL_DOMAIN + UserCoreConstants.DOMAIN_SEPARATOR + entry.getKey();
+            }
+            roleNamesArr.add(roleName);
+        }
+        return roleNamesArr;
 
-	}
+    }
 
-	/**
-	 * modify user name with user storeage information. 
-	 * @param username - The user name
-	 * @param signupConfig - The sign up configuration
-	 * @return - The modified user name
-	 */
-	public static String getDomainSpecificUserName(String username, UserRegistrationConfigDTO signupConfig) {
-		String modifiedUsername = null;	
-		// set tenant specific sign up user storage
-		if (signupConfig != null && !signupConfig.getSignUpDomain().equals("")) {
-			
-			int index = username.indexOf(UserCoreConstants.DOMAIN_SEPARATOR);
+    /**
+     * modify user name with user storeage information.
+     *
+     * @param username     - The user name
+     * @param signupConfig - The sign up configuration
+     * @return - The modified user name
+     */
+    public static String getDomainSpecificUserName(String username, UserRegistrationConfigDTO signupConfig) {
+        String modifiedUsername = null;
+        // set tenant specific sign up user storage
+        if (signupConfig != null && !signupConfig.getSignUpDomain().equals("")) {
+
+            int index = username.indexOf(UserCoreConstants.DOMAIN_SEPARATOR);
 			/*
 			 * if there is a different domain provided by the user other than one 
 			 * given in the configuration, add the correct signup domain. Here signup
 			 * domain refers to the user storage
 			 */
-		
-			if (index > 0) {
-				modifiedUsername =
-						signupConfig.getSignUpDomain().toUpperCase() +
-						UserCoreConstants.DOMAIN_SEPARATOR +
-						username.substring(index + 1);
-			} else {
-				modifiedUsername =
-						signupConfig.getSignUpDomain().toUpperCase() +
-						UserCoreConstants.DOMAIN_SEPARATOR + username;
-			}
-		}
-		
-		return modifiedUsername;
-	}
+
+            if (index > 0) {
+                modifiedUsername =
+                        signupConfig.getSignUpDomain().toUpperCase() + UserCoreConstants.DOMAIN_SEPARATOR + username
+                                .substring(index + 1);
+            } else {
+                modifiedUsername =
+                        signupConfig.getSignUpDomain().toUpperCase() + UserCoreConstants.DOMAIN_SEPARATOR + username;
+            }
+        }
+
+        return modifiedUsername;
+    }
 
     /**
      * This method is used to get the consent purposes
@@ -449,101 +434,98 @@ public final class SelfSignUpUtil {
         return !piiCategories.isEmpty();
     }
 
-	/**
-	 * Builds consent string according to consent API. This string can be used as the body of add receipt API
-	 *
-	 * @param username               Username of the user.
+    /**
+     * Builds consent string according to consent API. This string can be used as the body of add receipt API
+     *
+     * @param username               Username of the user.
      * @param userStoreDomain        User store domain of the user.
-	 * @param consent                Consent String which contains services.
-	 * @param jurisdiction           Jurisdiction.
-	 * @param collectionMethod       Collection Method.
-	 * @param language               Language.
-	 * @param policyURL              Policy URL.
-	 * @param consentType            Consent Type.
-	 * @param isPrimaryPurpose       Whether this this receipt is for primary purpose.
-	 * @param isThirdPartyDisclosure Whether this receipt can be disclosed to thrid parties.
-	 * @param termination            Termination date.
-	 * @return Consent string which contains above facts.
+     * @param consent                Consent String which contains services.
+     * @param jurisdiction           Jurisdiction.
+     * @param collectionMethod       Collection Method.
+     * @param language               Language.
+     * @param policyURL              Policy URL.
+     * @param consentType            Consent Type.
+     * @param isPrimaryPurpose       Whether this this receipt is for primary purpose.
+     * @param isThirdPartyDisclosure Whether this receipt can be disclosed to thrid parties.
+     * @param termination            Termination date.
+     * @return Consent string which contains above facts.
      * @throws ParseException when parsing the consent string.
-	 */
-	public static String buildConsentString(String username, String userStoreDomain, String consent, String jurisdiction,
-			String collectionMethod, String language, String policyURL,
-			String consentType, boolean isPrimaryPurpose, boolean
-			isThirdPartyDisclosure, String termination) throws ParseException {
+     */
+    public static String buildConsentString(String username, String userStoreDomain, String consent,
+            String jurisdiction, String collectionMethod, String language, String policyURL, String consentType,
+            boolean isPrimaryPurpose, boolean isThirdPartyDisclosure, String termination) throws ParseException {
 
-		if (StringUtils.isEmpty(consent)) {
-			if (log.isDebugEnabled()) {
-				log.debug("Empty consent string. Hence returning without building consent");
-			}
-			return consent;
-		}
+        if (StringUtils.isEmpty(consent)) {
+            if (log.isDebugEnabled()) {
+                log.debug("Empty consent string. Hence returning without building consent");
+            }
+            return consent;
+        }
         String piiPrincipalId = getPiiPrincipalID(username, userStoreDomain);
         JSONParser parser = new JSONParser();
         JSONObject receipt = (JSONObject) parser.parse(consent);
-		receipt.put(JURISDICTION_KEY, jurisdiction);
-		receipt.put(COLLECTION_METHOD_KEY, collectionMethod);
-		receipt.put(LANGUAGE_KEY, language);
-		receipt.put(PII_PRINCIPAL_ID_KEY, piiPrincipalId);
-		receipt.put(POLICY_URL_KEY, policyURL);
-		buildServices(receipt, consentType, isPrimaryPurpose, isThirdPartyDisclosure, termination);
-		if (log.isDebugEnabled()) {
-			log.debug("Built consent from self signup util : " + consent);
-		}
+        receipt.put(JURISDICTION_KEY, jurisdiction);
+        receipt.put(COLLECTION_METHOD_KEY, collectionMethod);
+        receipt.put(LANGUAGE_KEY, language);
+        receipt.put(PII_PRINCIPAL_ID_KEY, piiPrincipalId);
+        receipt.put(POLICY_URL_KEY, policyURL);
+        buildServices(receipt, consentType, isPrimaryPurpose, isThirdPartyDisclosure, termination);
+        if (log.isDebugEnabled()) {
+            log.debug("Built consent from self signup util : " + consent);
+        }
 
-		return receipt.toString();
-	}
+        return receipt.toString();
+    }
 
-	private static String getPiiPrincipalID(String username, String userStoreDomain) {
+    private static String getPiiPrincipalID(String username, String userStoreDomain) {
 
-		String piiPrincipalId;
+        String piiPrincipalId;
 
-		if (StringUtils.isNotBlank(userStoreDomain) && !PRIMARY_USER_STORE_DOMAIN
-				.equals(userStoreDomain)) {
-			piiPrincipalId = userStoreDomain + USER_STORE_DOMAIN_SEPARATOR
-					+ username;
-		} else {
-			piiPrincipalId = username;
-		}
-		return piiPrincipalId;
-	}
+        if (StringUtils.isNotBlank(userStoreDomain) && !PRIMARY_USER_STORE_DOMAIN.equals(userStoreDomain)) {
+            piiPrincipalId = userStoreDomain + USER_STORE_DOMAIN_SEPARATOR + username;
+        } else {
+            piiPrincipalId = username;
+        }
+        return piiPrincipalId;
+    }
 
-	private static void buildServices(JSONObject receipt, String consentType, boolean isPrimaryPurpose, boolean
-			isThirdPartyDisclosure, String termination) {
+    private static void buildServices(JSONObject receipt, String consentType, boolean isPrimaryPurpose,
+            boolean isThirdPartyDisclosure, String termination) {
 
-		JSONArray services = (JSONArray) receipt.get(SERVICES);
-		for (int serviceIndex = 0; serviceIndex < services.size(); serviceIndex++) {
-			buildService((JSONObject) services.get(serviceIndex), consentType, isPrimaryPurpose,
-					isThirdPartyDisclosure, termination);
-		}
-	}
+        JSONArray services = (JSONArray) receipt.get(SERVICES);
+        for (int serviceIndex = 0; serviceIndex < services.size(); serviceIndex++) {
+            buildService((JSONObject) services.get(serviceIndex), consentType, isPrimaryPurpose, isThirdPartyDisclosure,
+                    termination);
+        }
+    }
 
-	private static void buildService(JSONObject service, String consentType, boolean isPrimaryPurpose, boolean
-			isThirdPartyDisclosure, String termination) {
+    private static void buildService(JSONObject service, String consentType, boolean isPrimaryPurpose,
+            boolean isThirdPartyDisclosure, String termination) {
 
-		JSONArray purposes = (JSONArray) service.get(PURPOSES);
+        JSONArray purposes = (JSONArray) service.get(PURPOSES);
 
-		for (int purposeIndex = 0; purposeIndex < purposes.size(); purposeIndex++) {
-			buildPurpose((JSONObject) purposes.get(purposeIndex), consentType, isPrimaryPurpose,
-					isThirdPartyDisclosure, termination);
-		}
-	}
+        for (int purposeIndex = 0; purposeIndex < purposes.size(); purposeIndex++) {
+            buildPurpose((JSONObject) purposes.get(purposeIndex), consentType, isPrimaryPurpose, isThirdPartyDisclosure,
+                    termination);
+        }
+    }
 
-	private static void buildPurpose(JSONObject purpose, String consentType, boolean isPrimaryPurpose, boolean
-			isThirdPartyDisclosure, String termination) {
+    private static void buildPurpose(JSONObject purpose, String consentType, boolean isPrimaryPurpose,
+            boolean isThirdPartyDisclosure, String termination) {
 
-		purpose.put(CONSENT_TYPE_KEY, consentType);
-		purpose.put(PRIMARY_PURPOSE_KEY, isPrimaryPurpose);
-		purpose.put(THRID_PARTY_DISCLOSURE_KEY, isThirdPartyDisclosure);
-		purpose.put(TERMINATION_KEY, termination);
-		JSONArray piiCategories = (JSONArray) purpose.get(PII_CATEGORY);
-		for (int categoryIndex = 0; categoryIndex < piiCategories.size(); categoryIndex++) {
-			buildCategory((JSONObject) piiCategories.get(categoryIndex), termination);
-		}
-	}
+        purpose.put(CONSENT_TYPE_KEY, consentType);
+        purpose.put(PRIMARY_PURPOSE_KEY, isPrimaryPurpose);
+        purpose.put(THRID_PARTY_DISCLOSURE_KEY, isThirdPartyDisclosure);
+        purpose.put(TERMINATION_KEY, termination);
+        JSONArray piiCategories = (JSONArray) purpose.get(PII_CATEGORY);
+        for (int categoryIndex = 0; categoryIndex < piiCategories.size(); categoryIndex++) {
+            buildCategory((JSONObject) piiCategories.get(categoryIndex), termination);
+        }
+    }
 
-	private static void buildCategory(JSONObject piiCategory, String validity) {
+    private static void buildCategory(JSONObject piiCategory, String validity) {
 
-		piiCategory.put(VALIDITY_KEY, validity);
-	}
+        piiCategory.put(VALIDITY_KEY, validity);
+    }
 
 }
