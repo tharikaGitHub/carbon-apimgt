@@ -108,6 +108,34 @@ public final class APIUsageStatisticsClientConstants {
     public static final String ALL_PROVIDERS = "__all_providers__";
 
     public static final String API_USAGEBY_DESTINATION_SUMMARY = "API_DESTINATION_SUMMARY";
+/*---------------------------------------------------------------------------------------------------------------------*/
+    public static final String API_USAGEBY_DESTINATION_AGGREGATION_DAYS= "ApiUsagePerDestinationAggregation_DAYS";
+
+    public static final String API_USAGEBY_DESTINATION_AGGREGATION_HOURS= "ApiUsagePerDestinationAggregation_HOURS";
+
+    public static final String API_USAGEBY_DESTINATION_AGGREGATION_MINUTES= "ApiUsagePerDestinationAggregation_MINUTES";
+
+    public static final String API_USAGEBY_DESTINATION_AGGREGATION_SECONDS= "ApiUsagePerDestinationAggregation_SECONDS";
+
+    public static final String API_USAGEBY_DESTINATION_AGGREGATION_MONTHS= "ApiUsagePerDestinationAggregation_MONTHS";
+
+    public static final String API_USAGEBY_DESTINATION_AGGREGATION_YEARS= "ApiUsagePerDestinationAggregation_YEARS";
+
+    public static final String API_NAME = "apiName"; //previously api
+
+    public static final String API_VERSION = "apiVersion"; //version
+
+    public static final String API_PUBLISHER = "apiPublisher"; //apiPublisher
+
+    public static final String API_CONTEXT = "apiContext"; //context
+
+    public static final String DESTINATION= "destination"; //destination
+
+    public static final String TOTAL_REQUEST_COUNT = "AGG_COUNT"; //total_request_count
+
+    public static final String TIME_STAMP= "AGG_TIMESTAMP"; //time
+
+/*--------------------------------------------------------------------------------------------------------------------*/
 
     public static final String APPLICATION_NAME = "applicationName";
 

@@ -95,10 +95,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -107,6 +111,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 /**
@@ -1142,6 +1147,7 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
 
     /**
      * This method find the destination of the apis
+     *
      * @param providerName Name of the API provider
      * @param fromDate     starting date of the results
      * @param toDate       ending date of the results
@@ -1151,29 +1157,89 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
     @Override
     public List<APIDestinationUsageDTO> getAPIUsageByDestination(String providerName, String fromDate, String toDate)
             throws APIMgtUsageQueryServiceClientException {
+        long startTimeStamp = 0;
+        long endTimeStamp = 0;
+        long duration;
+        List<APIUsageByDestination> usageData = null;
+        try {
+            DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            Date startDate = dateFormat.parse(fromDate);
+            Date endDate = dateFormat.parse(toDate);
+            startTimeStamp = startDate.getTime();
+            endTimeStamp = endDate.getTime();
+            duration = startTimeStamp - endTimeStamp;
 
-        List<APIUsageByDestination> usageData = this
-                .getAPIUsageByDestinationData(APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_SUMMARY,
-                        fromDate, toDate);
+            Calendar c = Calendar.getInstance();
+            c.setTimeInMillis(duration);
+            int numOfYears = c.get(Calendar.YEAR) - 1970;
+            int numOfMonths = c.get(Calendar.MONTH);
+            int numOfDays = c.get(Calendar.DAY_OF_MONTH) - 1;
+            int numOfHours = c.get(Calendar.HOUR_OF_DAY);
+            int numOfMinutes = c.get(Calendar.MINUTE);
+
+            long minuteStartTimeStamp = endTimeStamp - numOfMinutes * 1000 * 60;
+            long hourStartTimeStamp = (endTimeStamp - numOfMinutes * 1000 * 60) - numOfHours * 1000 * 60 * 60;
+            long dayStartTimeStamp = ((endTimeStamp - numOfMinutes * 1000 * 60) - numOfHours * 1000 * 60 * 60)
+                    - numOfDays * 1000 * 60 * 60 * 24;
+            long monthStartTimeStamp = (((endTimeStamp - numOfMinutes * 1000 * 60) - numOfHours * 1000 * 60 * 60)
+                    - numOfDays * 1000 * 60 * 60 * 24) - numOfMonths * 1000 * 60 * 60 * 24 * 30;
+            long yearStartTimeStamp = (((endTimeStamp - numOfMinutes * 1000 * 60) - numOfHours * 1000 * 60 * 60)
+                    - numOfDays * 1000 * 60 * 60 * 24) - numOfMonths * 1000 * 60 * 60 * 24 * 30;
+
+            if (numOfMinutes > 0) {
+                usageData = this.getAPIUsageByDestinationData(
+                        APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_MINUTES,
+                        minuteStartTimeStamp, endTimeStamp);
+                //query the minute table for records currentTime(toDate) - mMinute(convert to milliseconds) period
+                //startTime = currentTime(toDate) - mMinute(convert to milliseconds)
+                //endTime = currentTime(toDate)
+            }
+            if (numOfHours > 0) {
+                usageData = this.getAPIUsageByDestinationData(
+                        APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_HOURS, hourStartTimeStamp,
+                        minuteStartTimeStamp);
+                //query the hour table for records {currentTime(toDate) - mMinute(convert to milliseconds)} - mHour(convert to milliseconds)
+            }
+            if (numOfDays > 0) {
+                usageData = this.getAPIUsageByDestinationData(
+                        APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_DAYS, dayStartTimeStamp,
+                        hourStartTimeStamp);
+                //query the day table
+            }
+            if (numOfMonths > 0) {
+                usageData = this.getAPIUsageByDestinationData(
+                        APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_MONTHS,
+                        monthStartTimeStamp, dayStartTimeStamp);
+                //query the month table
+            }
+            if (numOfYears > 0) {
+                usageData = this.getAPIUsageByDestinationData(
+                        APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_YEARS, yearStartTimeStamp,
+                        monthStartTimeStamp);
+                //query the year table
+            }
+        } catch (ParseException e) {
+            handleException("Parse exception while formatting Date");
+        }
+
         List<API> providerAPIs = getAPIsByProvider(providerName);
-        List<APIDestinationUsageDTO> usageByResourcePath = new ArrayList<APIDestinationUsageDTO>();
+        List<APIDestinationUsageDTO> usageByDestination = new ArrayList<APIDestinationUsageDTO>();
 
         for (APIUsageByDestination usage : usageData) {
             for (API providerAPI : providerAPIs) {
-                if (providerAPI.getId().getApiName().equals(usage.getApiName()) &&
-                        providerAPI.getId().getVersion().equals(usage.getApiVersion()) &&
-                        providerAPI.getContext().equals(usage.getContext())) {
+                if (providerAPI.getId().getApiName().equals(usage.getApiName()) && providerAPI.getId().getVersion()
+                        .equals(usage.getApiVersion()) && providerAPI.getContext().equals(usage.getContext())) {
                     APIDestinationUsageDTO usageDTO = new APIDestinationUsageDTO();
                     usageDTO.setApiName(usage.getApiName());
                     usageDTO.setVersion(usage.getApiVersion());
                     usageDTO.setDestination(usage.getDestination());
                     usageDTO.setContext(usage.getContext());
                     usageDTO.setCount(usage.getRequestCount());
-                    usageByResourcePath.add(usageDTO);
+                    usageByDestination.add(usageDTO);
                 }
             }
         }
-        return usageByResourcePath;
+        return usageByDestination;
     }
 
     /**
@@ -1768,52 +1834,53 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
      * This method find the API Destination usage of APIs
      *
      * @param tableName Name of the table data exist
-     * @param fromDate starting data
-     * @param toDate ending date
+     * @param fromDate  starting date
+     * @param toDate    ending date
      * @return list of APIUsageByDestination
      * @throws APIMgtUsageQueryServiceClientException throws if error occurred
      */
-    private List<APIUsageByDestination> getAPIUsageByDestinationData(String tableName, String fromDate, String toDate) throws APIMgtUsageQueryServiceClientException {
+    private List<APIUsageByDestination> getAPIUsageByDestinationData(String tableName, long fromDate, long toDate)
+            throws APIMgtUsageQueryServiceClientException {
         if (dataSource == null) {
-            handleException("BAM data source hasn't been initialized. Ensure that the data source " +
-                    "is properly configured in the APIUsageTracker configuration.");
+            handleException("BAM data source hasn't been initialized. Ensure that the data source "
+                    + "is properly configured in the APIUsageTracker configuration.");
         }
 
         Connection connection = null;
         PreparedStatement statement = null;
         ResultSet rs = null;
-        List<APIUsageByDestination> usageByResourcePath = new ArrayList<APIUsageByDestination>();
+        List<APIUsageByDestination> usageByDestination = new ArrayList<APIUsageByDestination>();
         try {
             connection = dataSource.getConnection();
-            String query =
-                    "SELECT " + APIUsageStatisticsClientConstants.API + ',' + APIUsageStatisticsClientConstants.VERSION
-                            + ',' + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                            + APIUsageStatisticsClientConstants.CONTEXT + ','
-                            + APIUsageStatisticsClientConstants.DESTINATION + ',' + "SUM("
-                            + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + ") as total_request_count"
-                            + " FROM " + tableName + " WHERE " + APIUsageStatisticsClientConstants.TIME
-                            + " BETWEEN ? AND ?" + " GROUP BY " + APIUsageStatisticsClientConstants.API + ','
-                            + APIUsageStatisticsClientConstants.VERSION + ','
-                            + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                            + APIUsageStatisticsClientConstants.CONTEXT + ','
-                            + APIUsageStatisticsClientConstants.DESTINATION;
+            String query = "SELECT " + APIUsageStatisticsClientConstants.API_NAME + ','
+                    + APIUsageStatisticsClientConstants.API_VERSION + ','
+                    + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
+                    + APIUsageStatisticsClientConstants.API_CONTEXT + ','
+                    + APIUsageStatisticsClientConstants.DESTINATION + ',' + "SUM("
+                    + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + ") as total_request_count" + " FROM "
+                    + tableName + " WHERE " + APIUsageStatisticsClientConstants.TIME_STAMP + " BETWEEN ? AND ?"
+                    + " GROUP BY " + APIUsageStatisticsClientConstants.API_NAME + ','
+                    + APIUsageStatisticsClientConstants.API_VERSION + ','
+                    + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
+                    + APIUsageStatisticsClientConstants.API_CONTEXT + ','
+                    + APIUsageStatisticsClientConstants.DESTINATION;
 
             statement = connection.prepareStatement(query);
-            statement.setString(1, fromDate);
-            statement.setString(2, toDate);
+            statement.setLong(1, fromDate);
+            statement.setLong(2, toDate);
             rs = statement.executeQuery();
             APIUsageByDestination apiUsageByDestination;
 
             while (rs.next()) {
-                String apiName = rs.getString(APIUsageStatisticsClientConstants.API);
-                String version = rs.getString(APIUsageStatisticsClientConstants.VERSION);
-                String context = rs.getString(APIUsageStatisticsClientConstants.CONTEXT);
+                String apiName = rs.getString(APIUsageStatisticsClientConstants.API_NAME);
+                String version = rs.getString(APIUsageStatisticsClientConstants.API_VERSION);
+                String context = rs.getString(APIUsageStatisticsClientConstants.API_CONTEXT);
                 String destination = rs.getString(APIUsageStatisticsClientConstants.DESTINATION);
-                long requestCount = rs.getLong("total_request_count");
+                long requestCount = rs.getLong(APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT);
                 apiUsageByDestination = new APIUsageByDestination(apiName, version, context, destination, requestCount);
-                usageByResourcePath.add(apiUsageByDestination);
+                usageByDestination.add(apiUsageByDestination);
             }
-            return usageByResourcePath;
+            return usageByDestination;
         } catch (Exception e) {
             log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
             throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
