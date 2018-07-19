@@ -1160,72 +1160,7 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
     @Override
     public List<APIDestinationUsageDTO> getAPIUsageByDestination(String providerName, String fromDate, String toDate)
             throws APIMgtUsageQueryServiceClientException {
-        List<APIUsageByDestination> usageData = null;
-        Map<String, ArrayList<Long>> tableList = new HashMap<String, ArrayList<Long>>();
-        try {
-            DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            Date startDate = dateFormat.parse(fromDate);
-            Date endDate = dateFormat.parse(toDate);
-            long startTimeStamp = startDate.getTime();
-            long endTimeStamp = endDate.getTime();
-
-            Interval interval = new Interval(startTimeStamp, endTimeStamp);
-            Period period = interval.toPeriod();
-            int numOfYears = period.getYears();
-            int numOfMonths = period.getMonths();
-            int numOfWeeks = period.getWeeks();
-            int numOfDays = period.getDays();
-            if (numOfWeeks > 0) {
-                numOfDays += numOfWeeks * 7;
-            }
-            int numOfHours = period.getHours();
-            int numOfMinutes = period.getMinutes();
-
-            long minuteStartTimeStamp = new DateTime(endTimeStamp).minusMinutes(numOfMinutes).getMillis();
-            long hourStartTimeStamp = new DateTime(minuteStartTimeStamp).minusHours(numOfHours).getMillis();
-            long dayStartTimeStamp = new DateTime(hourStartTimeStamp).minusDays(numOfDays).getMillis();
-            long monthStartTimeStamp = new DateTime(dayStartTimeStamp).minusMonths(numOfMonths).getMillis();
-            long yearStartTimeStamp = new DateTime(monthStartTimeStamp).minusYears(numOfYears).getMillis();
-
-            if (numOfMinutes > 0) {
-                ArrayList<Long> timestampMinutes = new ArrayList<Long>();
-                timestampMinutes.add(0, minuteStartTimeStamp);
-                timestampMinutes.add(1, endTimeStamp);
-                tableList.put(APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_MINUTES,
-                        timestampMinutes);
-            }
-            if (numOfHours > 0) {
-                ArrayList<Long> timestampHours = new ArrayList<Long>();
-                timestampHours.add(0, hourStartTimeStamp);
-                timestampHours.add(1, minuteStartTimeStamp);
-                tableList.put(APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_HOURS,
-                        timestampHours);
-            }
-            if (numOfDays > 0) {
-                ArrayList<Long> timestampDays = new ArrayList<Long>();
-                timestampDays.add(0, dayStartTimeStamp);
-                timestampDays.add(1, hourStartTimeStamp);
-                tableList.put(APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_DAYS, timestampDays);
-            }
-            if (numOfMonths > 0) {
-                ArrayList<Long> timestampMonths = new ArrayList<Long>();
-                timestampMonths.add(0, monthStartTimeStamp);
-                timestampMonths.add(1, dayStartTimeStamp);
-                tableList.put(APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_MONTHS,
-                        timestampMonths);
-            }
-            if (numOfYears > 0) {
-                ArrayList<Long> timestampYears = new ArrayList<Long>();
-                timestampYears.add(0, yearStartTimeStamp);
-                timestampYears.add(1, monthStartTimeStamp);
-                tableList.put(APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_YEARS,
-                        timestampYears);
-            }
-            usageData = this.getAPIUsageByDestinationData(tableList);
-        } catch (ParseException e) {
-            handleException("Parse exception while formatting Date");
-        }
-
+        List<APIUsageByDestination> usageData = this.getAPIUsageByDestinationData(fromDate, toDate);
         List<API> providerAPIs = getAPIsByProvider(providerName);
         List<APIDestinationUsageDTO> usageByDestination = new ArrayList<APIDestinationUsageDTO>();
 
@@ -1837,20 +1772,21 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
     /**
      * This method find the API Destination usage of APIs
      *
-     * @param tableList List of tables and times to query for
+     * @param fromDate Start date
+     * @param toDate End date
      * @return list of APIUsageByDestination
      * @throws APIMgtUsageQueryServiceClientException throws if error occurred
      */
-    private List<APIUsageByDestination> getAPIUsageByDestinationData(Map<String, ArrayList<Long>> tableList)
+    private List<APIUsageByDestination> getAPIUsageByDestinationData(String fromDate, String toDate)
             throws APIMgtUsageQueryServiceClientException {
         if (dataSource == null) {
             handleException("BAM data source hasn't been initialized. Ensure that the data source "
                     + "is properly configured in the APIUsageTracker configuration.");
         }
-
         Connection connection = null;
         PreparedStatement statement = null;
         ResultSet rs = null;
+        Map<String, ArrayList<Long>> tableList = this.getListOfAggregateTablesToQuery(fromDate, toDate);
         List<APIUsageByDestination> usageByDestination = new ArrayList<APIUsageByDestination>();
         int count = 0;
         String query = "SELECT " + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
@@ -1882,7 +1818,7 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
                     query += " UNION ALL ";
                 }
             }
-            query += ") TTTT GROUP BY " + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
+            query += ") alias GROUP BY " + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
                     + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
                     + APIUsageStatisticsClientConstants.NEW_API_CREATOR + ','
                     + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
@@ -1906,6 +1842,82 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
         } finally {
             closeDatabaseLinks(rs, statement, connection);
         }
+    }
+
+    /**
+     * This method is used to find the list of aggregate tables (SECONDS, MINUTES, DAYS etc.) to be queried along with
+     * the respective timestamps
+     *
+     * @param fromDate Start date
+     * @param toDate End Date
+     * @return A map containing the list of tables and the respective start and end timestamps for the periods
+     * @throws APIMgtUsageQueryServiceClientException if a Parse exception occurs
+     */
+    private Map<String, ArrayList<Long>> getListOfAggregateTablesToQuery(String fromDate, String toDate) throws APIMgtUsageQueryServiceClientException {
+        Map<String, ArrayList<Long>> tableList = new HashMap<String, ArrayList<Long>>();
+        try {
+            DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            Date startDate = dateFormat.parse(fromDate);
+            Date endDate = dateFormat.parse(toDate);
+            long startTimeStamp = startDate.getTime();
+            long endTimeStamp = endDate.getTime();
+
+            Interval interval = new Interval(startTimeStamp, endTimeStamp);
+            Period period = interval.toPeriod();
+            int numOfYears = period.getYears();
+            int numOfMonths = period.getMonths();
+            int numOfWeeks = period.getWeeks();
+            int numOfDays = period.getDays();
+            if (numOfWeeks > 0) {
+                numOfDays += numOfWeeks * 7;
+            }
+            int numOfHours = period.getHours();
+            int numOfMinutes = period.getMinutes();
+
+            long minuteStartTimeStamp = new DateTime(endTimeStamp).minusMinutes(numOfMinutes).getMillis();
+            long hourStartTimeStamp = new DateTime(minuteStartTimeStamp).minusHours(numOfHours).getMillis();
+            long dayStartTimeStamp = new DateTime(hourStartTimeStamp).minusDays(numOfDays).getMillis();
+            long monthStartTimeStamp = new DateTime(dayStartTimeStamp).minusMonths(numOfMonths).getMillis();
+            long yearStartTimeStamp = new DateTime(monthStartTimeStamp).minusYears(numOfYears).getMillis();
+
+            if (numOfMinutes > 0) {
+                ArrayList<Long> timestampMinutes = new ArrayList<Long>();
+                timestampMinutes.add(0, minuteStartTimeStamp);
+                timestampMinutes.add(1, endTimeStamp);
+                tableList.put(APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_MINUTES,
+                        timestampMinutes);
+            }
+            if (numOfHours > 0) {
+                ArrayList<Long> timestampHours = new ArrayList<Long>();
+                timestampHours.add(0, hourStartTimeStamp);
+                timestampHours.add(1, minuteStartTimeStamp);
+                tableList.put(APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_HOURS,
+                        timestampHours);
+            }
+            if (numOfDays > 0) {
+                ArrayList<Long> timestampDays = new ArrayList<Long>();
+                timestampDays.add(0, dayStartTimeStamp);
+                timestampDays.add(1, hourStartTimeStamp);
+                tableList.put(APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_DAYS, timestampDays);
+            }
+            if (numOfMonths > 0) {
+                ArrayList<Long> timestampMonths = new ArrayList<Long>();
+                timestampMonths.add(0, monthStartTimeStamp);
+                timestampMonths.add(1, dayStartTimeStamp);
+                tableList.put(APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_MONTHS,
+                        timestampMonths);
+            }
+            if (numOfYears > 0) {
+                ArrayList<Long> timestampYears = new ArrayList<Long>();
+                timestampYears.add(0, yearStartTimeStamp);
+                timestampYears.add(1, monthStartTimeStamp);
+                tableList.put(APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION_YEARS,
+                        timestampYears);
+            }
+        } catch (ParseException e) {
+            handleException("Parse exception while formatting Date");
+        }
+        return tableList;
     }
 
     /**
