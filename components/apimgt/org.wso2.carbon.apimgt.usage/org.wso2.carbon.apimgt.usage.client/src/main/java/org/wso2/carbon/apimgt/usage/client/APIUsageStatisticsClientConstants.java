@@ -109,17 +109,7 @@ public final class APIUsageStatisticsClientConstants {
 
     public static final String API_USAGEBY_DESTINATION_SUMMARY = "API_DESTINATION_SUMMARY";
 /*---------------------------------------------------------------------------------------------------------------------*/
-    public static final String API_USAGEBY_DESTINATION_AGGREGATION_DAYS= "ApiUsagePerDestinationAggregation_DAYS";
-
-    public static final String API_USAGEBY_DESTINATION_AGGREGATION_HOURS= "ApiUsagePerDestinationAggregation_HOURS";
-
-    public static final String API_USAGEBY_DESTINATION_AGGREGATION_MINUTES= "ApiUsagePerDestinationAggregation_MINUTES";
-
-    public static final String API_USAGEBY_DESTINATION_AGGREGATION_SECONDS= "ApiUsagePerDestinationAggregation_SECONDS";
-
-    public static final String API_USAGEBY_DESTINATION_AGGREGATION_MONTHS= "ApiUsagePerDestinationAggregation_MONTHS";
-
-    public static final String API_USAGEBY_DESTINATION_AGGREGATION_YEARS= "ApiUsagePerDestinationAggregation_YEARS";
+    public static final String API_USAGEBY_DESTINATION_AGGREGATION= "ApiUsagePerDestinationAggregation";
 
     public static final String NEW_API_NAME = "apiName"; //previously api
 
