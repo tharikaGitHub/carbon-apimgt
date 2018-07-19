@@ -125,7 +125,7 @@ public final class APIUsageStatisticsClientConstants {
 
     public static final String NEW_API_VERSION = "apiVersion"; //version
 
-    public static final String NEW_API_PUBLISHER = "apiPublisher"; //apiPublisher
+    public static final String NEW_API_CREATOR = "apiCreator"; //apiPublisher
 
     public static final String NEW_API_CONTEXT = "apiContext"; //context
 
@@ -134,6 +134,8 @@ public final class APIUsageStatisticsClientConstants {
     public static final String NEW_TOTAL_REQUEST_COUNT = "AGG_COUNT"; //total_request_count
 
     public static final String NEW_TIME_STAMP= "AGG_TIMESTAMP"; //time
+
+    public static final String NEW_REQUEST_TIME_STAMP= "requestTimestamp";
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 

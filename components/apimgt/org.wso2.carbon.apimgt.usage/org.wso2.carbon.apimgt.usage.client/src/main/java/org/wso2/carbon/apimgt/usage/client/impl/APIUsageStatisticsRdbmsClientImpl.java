@@ -1855,7 +1855,7 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
         int count = 0;
         String query = "SELECT " + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
                 + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
-                + APIUsageStatisticsClientConstants.NEW_API_PUBLISHER + ','
+                + APIUsageStatisticsClientConstants.NEW_API_CREATOR + ','
                 + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
                 + APIUsageStatisticsClientConstants.NEW_DESTINATION + ',' + "SUM("
                 + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + ") as "
@@ -1865,7 +1865,7 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
             for (Map.Entry<String, ArrayList<Long>> entry : tableList.entrySet()) {
                 query += "SELECT " + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
                         + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.NEW_API_PUBLISHER + ','
+                        + APIUsageStatisticsClientConstants.NEW_API_CREATOR + ','
                         + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
                         + APIUsageStatisticsClientConstants.NEW_DESTINATION + ',' + "SUM("
                         + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + ") as "
@@ -1874,7 +1874,7 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
                         .get(0).toString() + " AND " + entry.getValue().get(1).toString() + " GROUP BY "
                         + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
                         + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.NEW_API_PUBLISHER + ','
+                        + APIUsageStatisticsClientConstants.NEW_API_CREATOR + ','
                         + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
                         + APIUsageStatisticsClientConstants.NEW_DESTINATION;
                 count += 1;
@@ -1884,7 +1884,7 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
             }
             query += ") TTTT GROUP BY " + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
                     + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
-                    + APIUsageStatisticsClientConstants.NEW_API_PUBLISHER + ','
+                    + APIUsageStatisticsClientConstants.NEW_API_CREATOR + ','
                     + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
                     + APIUsageStatisticsClientConstants.NEW_DESTINATION;
             statement = connection.prepareStatement(query);
