@@ -121,19 +121,19 @@ public final class APIUsageStatisticsClientConstants {
 
     public static final String API_USAGEBY_DESTINATION_AGGREGATION_YEARS= "ApiUsagePerDestinationAggregation_YEARS";
 
-    public static final String API_NAME = "apiName"; //previously api
+    public static final String NEW_API_NAME = "apiName"; //previously api
 
-    public static final String API_VERSION = "apiVersion"; //version
+    public static final String NEW_API_VERSION = "apiVersion"; //version
 
-    public static final String API_PUBLISHER = "apiPublisher"; //apiPublisher
+    public static final String NEW_API_PUBLISHER = "apiPublisher"; //apiPublisher
 
-    public static final String API_CONTEXT = "apiContext"; //context
+    public static final String NEW_API_CONTEXT = "apiContext"; //context
 
-    public static final String DESTINATION= "destination"; //destination
+    public static final String NEW_DESTINATION= "destination"; //destination
 
-    public static final String TOTAL_REQUEST_COUNT = "AGG_COUNT"; //total_request_count
+    public static final String NEW_TOTAL_REQUEST_COUNT = "AGG_COUNT"; //total_request_count
 
-    public static final String TIME_STAMP= "AGG_TIMESTAMP"; //time
+    public static final String NEW_TIME_STAMP= "AGG_TIMESTAMP"; //time
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 
