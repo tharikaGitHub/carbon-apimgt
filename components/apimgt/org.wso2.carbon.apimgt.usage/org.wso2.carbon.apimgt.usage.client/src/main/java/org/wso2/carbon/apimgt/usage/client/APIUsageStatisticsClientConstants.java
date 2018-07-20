@@ -109,7 +109,7 @@ public final class APIUsageStatisticsClientConstants {
 
     public static final String API_USAGEBY_DESTINATION_SUMMARY = "API_DESTINATION_SUMMARY";
 /*---------------------------------------------------------------------------------------------------------------------*/
-    public static final String API_USAGEBY_DESTINATION_AGGREGATION= "ApiUsagePerDestinationAggregation";
+    public static final String API_USAGE_BY_DESTINATION_AGGREGATION= "ApiUsagePerDestinationAggregation";
 
     public static final String NEW_API_NAME = "apiName"; //previously api
 
@@ -126,6 +126,32 @@ public final class APIUsageStatisticsClientConstants {
     public static final String NEW_TIME_STAMP= "AGG_TIMESTAMP"; //time
 
     public static final String NEW_REQUEST_TIME_STAMP= "requestTimestamp";
+
+    public static final String DURATION_YEARS = "YEARS";
+
+    public static final String DURATION_MONTHS = "MONTHS";
+
+    public static final String DURATION_DAYS = "DAYS";
+
+    public static final String DURATION_HOURS = "HOURS";
+
+    public static final String DURATION_MINUTES = "MINUTES";
+
+    public static final String DURATION_SECONDS = "SECONDS";
+
+    public static final String YEARS_TABLE_TYPE = "_YEARS";
+
+    public static final String MONTHS_TABLE_TYPE = "_MONTHS";
+
+    public static final String DAYS_TABLE_TYPE = "_DAYS";
+
+    public static final String HOURS_TABLE_TYPE = "_HOURS";
+
+    public static final String MINUTES_TABLE_TYPE = "_MINUTES";
+
+    public static final String SECONDS_TABLE_TYPE = "_SECONDS";
+
+    public static final String TIMESTAMP_PATTERN = "yyyy-MM-dd HH:mm:ss";
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 

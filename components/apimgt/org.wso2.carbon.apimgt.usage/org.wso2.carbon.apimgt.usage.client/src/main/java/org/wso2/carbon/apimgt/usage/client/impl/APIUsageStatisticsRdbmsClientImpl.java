@@ -1181,6 +1181,39 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
         return usageByDestination;
     }
 
+//    /**
+//     * This method find the destination of the apis
+//     *
+//     * @param providerName Name of the API provider
+//     * @param fromDate     starting date of the results
+//     * @param toDate       ending date of the results
+//     * @return list of APIDestinationUsageDTO
+//     * @throws APIMgtUsageQueryServiceClientException throws if error occurred
+//     */
+//    @Override
+//    public List<APIDestinationUsageDTO> getAPIUsageByDestination(String providerName, String fromDate, String toDate)
+//            throws APIMgtUsageQueryServiceClientException {
+//        List<APIUsageByDestination> usageData = this.getAPIUsageByDestinationData(fromDate, toDate);
+//        List<API> providerAPIs = getAPIsByProvider(providerName);
+//        List<APIDestinationUsageDTO> usageByDestination = new ArrayList<APIDestinationUsageDTO>();
+//
+//        for (APIUsageByDestination usage : usageData) {
+//            for (API providerAPI : providerAPIs) {
+//                if (providerAPI.getId().getApiName().equals(usage.getApiName()) && providerAPI.getId().getVersion()
+//                        .equals(usage.getApiVersion()) && providerAPI.getContext().equals(usage.getContext())) {
+//                    APIDestinationUsageDTO usageDTO = new APIDestinationUsageDTO();
+//                    usageDTO.setApiName(usage.getApiName());
+//                    usageDTO.setVersion(usage.getApiVersion());
+//                    usageDTO.setDestination(usage.getDestination());
+//                    usageDTO.setContext(usage.getContext());
+//                    usageDTO.setCount(usage.getRequestCount());
+//                    usageByDestination.add(usageDTO);
+//                }
+//            }
+//        }
+//        return usageByDestination;
+//    }
+
     /**
      * Returns a list of APIUsageByUserDTO objects that contain information related to
      * User wise API Usage, along with the number of invocations, and API Version
@@ -1779,72 +1812,250 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
      */
     private List<APIUsageByDestination> getAPIUsageByDestinationData(String fromDate, String toDate)
             throws APIMgtUsageQueryServiceClientException {
-        if (dataSource == null) {
-            handleException("BAM data source hasn't been initialized. Ensure that the data source "
-                    + "is properly configured in the APIUsageTracker configuration.");
-        }
-        Connection connection = null;
-        PreparedStatement statement = null;
-        ResultSet rs = null;
-        Map<String, ArrayList<Long>> tableList = this
-                .getListOfAggregateTablesToQuery(APIUsageStatisticsClientConstants.API_USAGEBY_DESTINATION_AGGREGATION,
-                        fromDate, toDate);
+        ResultSet yearResults = null;
+        ResultSet monthResults = null;
+        ResultSet dayResults = null;
+        ResultSet hourResults = null;
+        ResultSet minuteResults = null;
+        ResultSet secondResults = null;
         List<APIUsageByDestination> usageByDestination = new ArrayList<APIUsageByDestination>();
-        int count = 0;
-        String query = "SELECT " + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
-                + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
-                + APIUsageStatisticsClientConstants.NEW_API_CREATOR + ','
-                + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
-                + APIUsageStatisticsClientConstants.NEW_DESTINATION + ',' + "SUM("
-                + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + ") as "
-                + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + " FROM (";
+
         try {
-            connection = dataSource.getConnection();
-            for (Map.Entry<String, ArrayList<Long>> entry : tableList.entrySet()) {
-                query += "SELECT " + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
-                        + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.NEW_API_CREATOR + ','
-                        + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
-                        + APIUsageStatisticsClientConstants.NEW_DESTINATION + ',' + "SUM("
-                        + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + ") as "
-                        + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + " FROM " + entry.getKey()
-                        + " WHERE " + APIUsageStatisticsClientConstants.NEW_TIME_STAMP + " BETWEEN " + entry.getValue()
-                        .get(0).toString() + " AND " + entry.getValue().get(1).toString() + " GROUP BY "
-                        + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
-                        + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.NEW_API_CREATOR + ','
-                        + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
-                        + APIUsageStatisticsClientConstants.NEW_DESTINATION;
-                count += 1;
-                if (count < tableList.size()) {
-                    query += " UNION ALL ";
-                }
-            }
-            query += ") alias GROUP BY " + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
+            DateFormat dateFormat = new SimpleDateFormat(APIUsageStatisticsClientConstants.TIMESTAMP_PATTERN);
+            Date startDate = dateFormat.parse(fromDate);
+            Date endDate = dateFormat.parse(toDate);
+            long startTimeStamp = startDate.getTime();
+            long endTimeStamp = endDate.getTime();
+
+            Map<String, Integer> durationBreakdown = this.getDurationBreakdown(startTimeStamp, endTimeStamp);
+            long yearEndTimeStamp = this
+                    .getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_YEARS,
+                            durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS));
+            long monthEndTimeStamp = this
+                    .getEndTimeStamp(yearEndTimeStamp, APIUsageStatisticsClientConstants.DURATION_MONTHS,
+                            durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS));
+            long dayEndTimeStamp = this
+                    .getEndTimeStamp(monthEndTimeStamp, APIUsageStatisticsClientConstants.DURATION_DAYS,
+                            durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_DAYS));
+            long hourEndTimeStamp = this
+                    .getEndTimeStamp(dayEndTimeStamp, APIUsageStatisticsClientConstants.DURATION_HOURS,
+                            durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_HOURS));
+            long minuteEndTimeStamp = this
+                    .getEndTimeStamp(hourEndTimeStamp, APIUsageStatisticsClientConstants.DURATION_MINUTES,
+                            durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MINUTES));
+
+            String query = "SELECT " + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
+                    + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
+                    + APIUsageStatisticsClientConstants.NEW_API_CREATOR + ','
+                    + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
+                    + APIUsageStatisticsClientConstants.NEW_DESTINATION + ',' + "SUM("
+                    + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + ") as "
+                    + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + " FROM ? WHERE "
+                    + APIUsageStatisticsClientConstants.NEW_TIME_STAMP + " BETWEEN ? AND ? GROUP BY "
+                    + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
                     + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
                     + APIUsageStatisticsClientConstants.NEW_API_CREATOR + ','
                     + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
                     + APIUsageStatisticsClientConstants.NEW_DESTINATION;
-            statement = connection.prepareStatement(query);
-            rs = statement.executeQuery();
+
             APIUsageByDestination apiUsageByDestination;
-            while (rs.next()) {
-                String apiName = rs.getString(APIUsageStatisticsClientConstants.NEW_API_NAME);
-                String version = rs.getString(APIUsageStatisticsClientConstants.NEW_API_VERSION);
-                String context = rs.getString(APIUsageStatisticsClientConstants.NEW_API_CONTEXT);
-                String destination = rs.getString(APIUsageStatisticsClientConstants.NEW_DESTINATION);
-                long requestCount = rs.getLong(APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT);
-                apiUsageByDestination = new APIUsageByDestination(apiName, version, context, destination, requestCount);
-                usageByDestination.add(apiUsageByDestination);
+            if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS) > 0) {
+                yearResults = getResultSetForYearsIfExists(query,
+                        APIUsageStatisticsClientConstants.API_USAGE_BY_DESTINATION_AGGREGATION, startTimeStamp,
+                        durationBreakdown);
             }
-            return usageByDestination;
-        } catch (Exception e) {
+            if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS) > 0) {
+                monthResults = getResultSetForMonthsIfExists(query,
+                        APIUsageStatisticsClientConstants.API_USAGE_BY_DESTINATION_AGGREGATION, yearEndTimeStamp,
+                        durationBreakdown);
+            }
+            if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_DAYS) > 0) {
+                dayResults = getResultSetForDaysIfExists(query,
+                        APIUsageStatisticsClientConstants.API_USAGE_BY_DESTINATION_AGGREGATION, monthEndTimeStamp,
+                        durationBreakdown);
+            }
+            if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_HOURS) > 0) {
+                hourResults = getResultSetForHoursIfExists(query,
+                        APIUsageStatisticsClientConstants.API_USAGE_BY_DESTINATION_AGGREGATION, dayEndTimeStamp,
+                        durationBreakdown);
+            }
+            if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MINUTES) > 0) {
+                minuteResults = getResultSetForMinutesIfExists(query,
+                        APIUsageStatisticsClientConstants.API_USAGE_BY_DESTINATION_AGGREGATION, hourEndTimeStamp,
+                        durationBreakdown);
+            }
+            if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_SECONDS) > 0) {
+                secondResults = getResultSetForSecondsIfExists(query,
+                        APIUsageStatisticsClientConstants.API_USAGE_BY_DESTINATION_AGGREGATION, minuteEndTimeStamp,
+                        durationBreakdown);
+            }
+
+            if (yearResults != null) {
+                while (yearResults.next()) {
+                    String apiName = yearResults.getString(APIUsageStatisticsClientConstants.NEW_API_NAME);
+                    String version = yearResults.getString(APIUsageStatisticsClientConstants.NEW_API_VERSION);
+                    String context = yearResults.getString(APIUsageStatisticsClientConstants.NEW_API_CONTEXT);
+                    String destination = yearResults.getString(APIUsageStatisticsClientConstants.NEW_DESTINATION);
+                    long requestCount = yearResults.getLong(APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT);
+                    apiUsageByDestination = new APIUsageByDestination(apiName, version, context, destination,
+                            requestCount);
+                    usageByDestination.add(apiUsageByDestination);
+                }
+            }
+            if (monthResults != null) {
+                while (monthResults.next()) {
+                    String apiName = monthResults.getString(APIUsageStatisticsClientConstants.NEW_API_NAME);
+                    String version = monthResults.getString(APIUsageStatisticsClientConstants.NEW_API_VERSION);
+                    String context = monthResults.getString(APIUsageStatisticsClientConstants.NEW_API_CONTEXT);
+                    String destination = monthResults.getString(APIUsageStatisticsClientConstants.NEW_DESTINATION);
+                    long requestCount = monthResults.getLong(APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT);
+                    apiUsageByDestination = new APIUsageByDestination(apiName, version, context, destination,
+                            requestCount);
+                    usageByDestination.add(apiUsageByDestination);
+                }
+            }
+            if (dayResults != null) {
+                while (dayResults.next()) {
+                    String apiName = dayResults.getString(APIUsageStatisticsClientConstants.NEW_API_NAME);
+                    String version = dayResults.getString(APIUsageStatisticsClientConstants.NEW_API_VERSION);
+                    String context = dayResults.getString(APIUsageStatisticsClientConstants.NEW_API_CONTEXT);
+                    String destination = dayResults.getString(APIUsageStatisticsClientConstants.NEW_DESTINATION);
+                    long requestCount = dayResults.getLong(APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT);
+                    apiUsageByDestination = new APIUsageByDestination(apiName, version, context, destination,
+                            requestCount);
+                    usageByDestination.add(apiUsageByDestination);
+                }
+            }
+            if (hourResults != null) {
+                while (hourResults.next()) {
+                    String apiName = hourResults.getString(APIUsageStatisticsClientConstants.NEW_API_NAME);
+                    String version = hourResults.getString(APIUsageStatisticsClientConstants.NEW_API_VERSION);
+                    String context = hourResults.getString(APIUsageStatisticsClientConstants.NEW_API_CONTEXT);
+                    String destination = hourResults.getString(APIUsageStatisticsClientConstants.NEW_DESTINATION);
+                    long requestCount = hourResults.getLong(APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT);
+                    apiUsageByDestination = new APIUsageByDestination(apiName, version, context, destination,
+                            requestCount);
+                    usageByDestination.add(apiUsageByDestination);
+                }
+            }
+            if (minuteResults != null) {
+                while (minuteResults.next()) {
+                    String apiName = minuteResults.getString(APIUsageStatisticsClientConstants.NEW_API_NAME);
+                    String version = minuteResults.getString(APIUsageStatisticsClientConstants.NEW_API_VERSION);
+                    String context = minuteResults.getString(APIUsageStatisticsClientConstants.NEW_API_CONTEXT);
+                    String destination = minuteResults.getString(APIUsageStatisticsClientConstants.NEW_DESTINATION);
+                    long requestCount = minuteResults
+                            .getLong(APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT);
+                    apiUsageByDestination = new APIUsageByDestination(apiName, version, context, destination,
+                            requestCount);
+                    usageByDestination.add(apiUsageByDestination);
+                }
+            }
+            if (secondResults != null) {
+                while (secondResults.next()) {
+                    String apiName = secondResults.getString(APIUsageStatisticsClientConstants.NEW_API_NAME);
+                    String version = secondResults.getString(APIUsageStatisticsClientConstants.NEW_API_VERSION);
+                    String context = secondResults.getString(APIUsageStatisticsClientConstants.NEW_API_CONTEXT);
+                    String destination = secondResults.getString(APIUsageStatisticsClientConstants.NEW_DESTINATION);
+                    long requestCount = secondResults
+                            .getLong(APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT);
+                    apiUsageByDestination = new APIUsageByDestination(apiName, version, context, destination,
+                            requestCount);
+                    usageByDestination.add(apiUsageByDestination);
+                }
+            }
+        } catch (ParseException e) {
+            handleException("Parse exception while formatting Date");
+        } catch (SQLException e) {
             log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
             throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
         } finally {
-            closeDatabaseLinks(rs, statement, connection);
+            closeDatabaseLinks(yearResults, null, null);
+            closeDatabaseLinks(monthResults, null, null);
+            closeDatabaseLinks(dayResults, null, null);
+            closeDatabaseLinks(hourResults, null, null);
+            closeDatabaseLinks(minuteResults, null, null);
+            closeDatabaseLinks(secondResults, null, null);
         }
+        return usageByDestination;
     }
+
+//    /**
+//     * This method find the API Destination usage of APIs
+//     *
+//     * @param fromDate Start date
+//     * @param toDate   End date
+//     * @return list of APIUsageByDestination
+//     * @throws APIMgtUsageQueryServiceClientException throws if error occurred
+//     */
+//    private List<APIUsageByDestination> getAPIUsageByDestinationData(String fromDate, String toDate)
+//            throws APIMgtUsageQueryServiceClientException {
+//        if (dataSource == null) {
+//            handleException("BAM data source hasn't been initialized. Ensure that the data source "
+//                    + "is properly configured in the APIUsageTracker configuration.");
+//        }
+//        Connection connection = null;
+//        PreparedStatement statement = null;
+//        ResultSet rs = null;
+//        Map<String, ArrayList<Long>> tableList = this
+//                .getListOfAggregateTablesToQuery(APIUsageStatisticsClientConstants.API_USAGE_BY_DESTINATION_AGGREGATION,
+//                        fromDate, toDate);
+//        List<APIUsageByDestination> usageByDestination = new ArrayList<APIUsageByDestination>();
+//        int count = 0;
+//        String query = "SELECT " + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
+//                + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
+//                + APIUsageStatisticsClientConstants.NEW_API_CREATOR + ','
+//                + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
+//                + APIUsageStatisticsClientConstants.NEW_DESTINATION + ',' + "SUM("
+//                + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + ") as "
+//                + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + " FROM (";
+//        try {
+//            connection = dataSource.getConnection();
+//            for (Map.Entry<String, ArrayList<Long>> entry : tableList.entrySet()) {
+//                query += "SELECT " + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
+//                        + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
+//                        + APIUsageStatisticsClientConstants.NEW_API_CREATOR + ','
+//                        + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
+//                        + APIUsageStatisticsClientConstants.NEW_DESTINATION + ',' + "SUM("
+//                        + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + ") as "
+//                        + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + " FROM " + entry.getKey()
+//                        + " WHERE " + APIUsageStatisticsClientConstants.NEW_TIME_STAMP + " BETWEEN " + entry.getValue()
+//                        .get(0).toString() + " AND " + entry.getValue().get(1).toString() + " GROUP BY "
+//                        + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
+//                        + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
+//                        + APIUsageStatisticsClientConstants.NEW_API_CREATOR + ','
+//                        + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
+//                        + APIUsageStatisticsClientConstants.NEW_DESTINATION;
+//                count += 1;
+//                if (count < tableList.size()) {
+//                    query += " UNION ALL ";
+//                }
+//            }
+//            query += ") alias GROUP BY " + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
+//                    + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
+//                    + APIUsageStatisticsClientConstants.NEW_API_CREATOR + ','
+//                    + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
+//                    + APIUsageStatisticsClientConstants.NEW_DESTINATION;
+//            statement = connection.prepareStatement(query);
+//            rs = statement.executeQuery();
+//            APIUsageByDestination apiUsageByDestination;
+//            while (rs.next()) {
+//                String apiName = rs.getString(APIUsageStatisticsClientConstants.NEW_API_NAME);
+//                String version = rs.getString(APIUsageStatisticsClientConstants.NEW_API_VERSION);
+//                String context = rs.getString(APIUsageStatisticsClientConstants.NEW_API_CONTEXT);
+//                String destination = rs.getString(APIUsageStatisticsClientConstants.NEW_DESTINATION);
+//                long requestCount = rs.getLong(APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT);
+//                apiUsageByDestination = new APIUsageByDestination(apiName, version, context, destination, requestCount);
+//                usageByDestination.add(apiUsageByDestination);
+//            }
+//            return usageByDestination;
+//        } catch (Exception e) {
+//            log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
+//            throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
+//        } finally {
+//            closeDatabaseLinks(rs, statement, connection);
+//        }
+//    }
 
     /**
      * This method is used to find the list of aggregate tables (SECONDS, MINUTES, DAYS etc.) to be queried along with
@@ -1925,6 +2136,350 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
             handleException("Parse exception while formatting Date");
         }
         return tableList;
+    }
+
+    /**
+     * This method is used to get the breakdown of the duration between 2 days/timestamps in terms of years,
+     * months, days, hours, minutes and seconds
+     *
+     * @param fromDate Start timestamp of the duration
+     * @param toDate   End timestamp of the duration
+     * @return A map containing the breakdown
+     * @throws APIMgtUsageQueryServiceClientException when there is an error during date parsing
+     */
+    private Map<String, Integer> getDurationBreakdown(long fromDate, long toDate)
+            throws APIMgtUsageQueryServiceClientException {
+        Map<String, Integer> durationBreakdown = new HashMap<String, Integer>();
+        Interval interval = new Interval(fromDate, toDate);
+        Period period = interval.toPeriod();
+        int numOfYears = period.getYears();
+        int numOfMonths = period.getMonths();
+        int numOfWeeks = period.getWeeks();
+        int numOfDays = period.getDays();
+        if (numOfWeeks > 0) {
+            numOfDays += numOfWeeks * 7;
+        }
+        int numOfHours = period.getHours();
+        int numOfMinutes = period.getMinutes();
+        int numOfSeconds = period.getSeconds();
+
+        durationBreakdown.put(APIUsageStatisticsClientConstants.DURATION_YEARS, numOfYears);
+        durationBreakdown.put(APIUsageStatisticsClientConstants.DURATION_MONTHS, numOfMonths);
+        durationBreakdown.put(APIUsageStatisticsClientConstants.DURATION_DAYS, numOfDays);
+        durationBreakdown.put(APIUsageStatisticsClientConstants.DURATION_HOURS, numOfHours);
+        durationBreakdown.put(APIUsageStatisticsClientConstants.DURATION_MINUTES, numOfMinutes);
+        durationBreakdown.put(APIUsageStatisticsClientConstants.DURATION_SECONDS, numOfSeconds);
+        return durationBreakdown;
+    }
+
+    /**
+     * This method is used to get the end timestamp given the start time, duration type and the duration
+     *
+     * @param startTimeStamp Start timestamp
+     * @param type           Type of the duration ("YEARS", "MONTHS" etc.)
+     * @param duration       Duration
+     * @return The end time stamp
+     */
+    private long getEndTimeStamp(long startTimeStamp, String type, int duration) {
+        if (APIUsageStatisticsClientConstants.DURATION_YEARS.equals(type)) {
+            return new DateTime(startTimeStamp).plusYears(duration).getMillis();
+        } else if (APIUsageStatisticsClientConstants.DURATION_MONTHS.equals(type)) {
+            return new DateTime(startTimeStamp).plusMonths(duration).getMillis();
+        } else if (APIUsageStatisticsClientConstants.DURATION_DAYS.equals(type)) {
+            return new DateTime(startTimeStamp).plusDays(duration).getMillis();
+        } else if (APIUsageStatisticsClientConstants.DURATION_HOURS.equals(type)) {
+            return new DateTime(startTimeStamp).plusHours(duration).getMillis();
+        } else if (APIUsageStatisticsClientConstants.DURATION_MINUTES.equals(type)) {
+            return new DateTime(startTimeStamp).plusMinutes(duration).getMillis();
+        } else if (APIUsageStatisticsClientConstants.DURATION_SECONDS.equals(type)) {
+            return new DateTime(startTimeStamp).plusSeconds(duration).getMillis();
+        }
+        return 0;
+    }
+
+    /**
+     * This method is used to fetch result set for a given query
+     *
+     * @param query Query
+     * @param tablePrefix Table name prefix to query for
+     * @param tableType Type of the table whether it is YEARS, MONTHS etc.
+     * @param fromDate Start date
+     * @param toDate End date
+     * @return Result Set
+     * @throws APIMgtUsageQueryServiceClientException If an SQL exception occurs
+     */
+    private ResultSet fetchResultSet(String query, String tablePrefix, String tableType, long fromDate, long toDate)
+            throws APIMgtUsageQueryServiceClientException {
+        if (dataSource == null) {
+            handleException("BAM data source hasn't been initialized. Ensure that the data source "
+                    + "is properly configured in the APIUsageTracker configuration.");
+        }
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet rs = null;
+        try {
+            connection = dataSource.getConnection();
+            statement = connection.prepareStatement(query);
+            statement.setString(1, tablePrefix + tableType);
+            statement.setLong(2, fromDate);
+            statement.setLong(3, toDate);
+            rs = statement.executeQuery();
+        } catch (Exception e) {
+            log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
+            throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
+        } finally {
+            closeDatabaseLinks(null, statement, connection);
+        }
+        return rs;
+    }
+
+    private ResultSet getResultSetForYearsIfExists(String query, String tablePrefix, long startTimeStamp,
+            Map<String, Integer> durationBreakdown) throws APIMgtUsageQueryServiceClientException {
+        ResultSet rsYears;
+        ResultSet rsMonths;
+        ResultSet rsDays;
+        ResultSet rsHours;
+        ResultSet rsMinutes;
+        ResultSet rsSeconds;
+        try {
+            rsYears = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.YEARS_TABLE_TYPE,
+                    startTimeStamp,
+                    this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_YEARS,
+                            durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS)));
+            if (rsYears == null || !rsYears.next()) { //If there are no entries in the years table
+                rsMonths = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.MONTHS_TABLE_TYPE,
+                        startTimeStamp,
+                        this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_YEARS,
+                                durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS)));
+                if (rsMonths == null || !rsMonths.next()) {
+                    rsDays = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.DAYS_TABLE_TYPE,
+                            startTimeStamp,
+                            this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_YEARS,
+                                    durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS)));
+                    if (rsDays == null || !rsDays.next()) {
+                        rsHours = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.HOURS_TABLE_TYPE,
+                                startTimeStamp,
+                                this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_YEARS,
+                                        durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS)));
+                        if (rsHours == null || !rsHours.next()) {
+                            rsMinutes = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.MINUTES_TABLE_TYPE,
+                                    startTimeStamp,
+                                    this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_YEARS,
+                                            durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS)));
+                            if (rsMinutes == null || !rsMinutes.next()) {
+                                rsSeconds = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.SECONDS_TABLE_TYPE,
+                                        startTimeStamp,
+                                        this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_YEARS,
+                                                durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS)));
+                                if (rsSeconds == null || !rsSeconds.next()) {
+                                    return null;
+                                } else {
+                                    return rsSeconds;
+                                }
+                            } else {
+                                return rsMinutes;
+                            }
+                        } else {
+                            return rsHours;
+                        }
+                    } else {
+                        return rsDays;
+                    }
+                } else {
+                    return rsMonths;
+                }
+            } else {
+                return rsYears;
+            }
+        } catch (SQLException e) {
+            log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
+            throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
+        }
+    }
+
+    private ResultSet getResultSetForMonthsIfExists(String query, String tablePrefix, long startTimeStamp,
+            Map<String, Integer> durationBreakdown) throws APIMgtUsageQueryServiceClientException {
+        ResultSet rsMonths;
+        ResultSet rsDays;
+        ResultSet rsHours;
+        ResultSet rsMinutes;
+        ResultSet rsSeconds;
+        try {
+            rsMonths = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.MONTHS_TABLE_TYPE,
+                    startTimeStamp,
+                    this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_MONTHS,
+                            durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS)));
+            if (rsMonths == null || !rsMonths.next()) {
+                rsDays = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.DAYS_TABLE_TYPE,
+                        startTimeStamp,
+                        this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_MONTHS,
+                                durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS)));
+                if (rsDays == null || !rsDays.next()) {
+                    rsHours = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.HOURS_TABLE_TYPE,
+                            startTimeStamp,
+                            this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_MONTHS,
+                                    durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS)));
+                    if (rsHours == null || !rsHours.next()) {
+                        rsMinutes = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.MINUTES_TABLE_TYPE,
+                                startTimeStamp,
+                                this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_MONTHS,
+                                        durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS)));
+                        if (rsMinutes == null || !rsMinutes.next()) {
+                            rsSeconds = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.SECONDS_TABLE_TYPE,
+                                    startTimeStamp,
+                                    this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_MONTHS,
+                                            durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS)));
+                            if (rsSeconds == null || !rsSeconds.next()) {
+                                return null;
+                            } else {
+                                return rsSeconds;
+                            }
+                        } else {
+                            return rsMinutes;
+                        }
+                    } else {
+                        return rsHours;
+                    }
+                } else {
+                    return rsDays;
+                }
+            } else {
+                return rsMonths;
+            }
+        } catch (SQLException e) {
+            log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
+            throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
+        }
+    }
+
+    private ResultSet getResultSetForDaysIfExists(String query, String tablePrefix, long startTimeStamp,
+            Map<String, Integer> durationBreakdown) throws APIMgtUsageQueryServiceClientException {
+        ResultSet rsDays;
+        ResultSet rsHours;
+        ResultSet rsMinutes;
+        ResultSet rsSeconds;
+        try {
+            rsDays = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.DAYS_TABLE_TYPE,
+                    startTimeStamp,
+                    this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_DAYS,
+                            durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_DAYS)));
+            if (rsDays == null || !rsDays.next()) {
+                rsHours = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.HOURS_TABLE_TYPE,
+                        startTimeStamp,
+                        this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_DAYS,
+                                durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_DAYS)));
+                if (rsHours == null || !rsHours.next()) {
+                    rsMinutes = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.MINUTES_TABLE_TYPE,
+                            startTimeStamp,
+                            this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_DAYS,
+                                    durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_DAYS)));
+                    if (rsMinutes == null || !rsMinutes.next()) {
+                        rsSeconds = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.SECONDS_TABLE_TYPE,
+                                startTimeStamp,
+                                this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_DAYS,
+                                        durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_DAYS)));
+                        if (rsSeconds == null || !rsSeconds.next()) {
+                            return null;
+                        } else {
+                            return rsSeconds;
+                        }
+                    } else {
+                        return rsMinutes;
+                    }
+                } else {
+                    return rsHours;
+                }
+            } else {
+                return rsDays;
+            }
+        } catch (SQLException e) {
+            log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
+            throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
+        }
+    }
+
+    private ResultSet getResultSetForHoursIfExists(String query, String tablePrefix, long startTimeStamp,
+            Map<String, Integer> durationBreakdown) throws APIMgtUsageQueryServiceClientException {
+        ResultSet rsHours;
+        ResultSet rsMinutes;
+        ResultSet rsSeconds;
+        try {
+            rsHours = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.HOURS_TABLE_TYPE,
+                    startTimeStamp,
+                    this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_HOURS,
+                            durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_HOURS)));
+            if (rsHours == null || !rsHours.next()) {
+                rsMinutes = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.MINUTES_TABLE_TYPE,
+                        startTimeStamp,
+                        this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_HOURS,
+                                durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_HOURS)));
+                if (rsMinutes == null || !rsMinutes.next()) {
+                    rsSeconds = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.SECONDS_TABLE_TYPE,
+                            startTimeStamp,
+                            this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_HOURS,
+                                    durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_HOURS)));
+                    if (rsSeconds == null || !rsSeconds.next()) {
+                        return null;
+                    } else {
+                        return rsSeconds;
+                    }
+                } else {
+                    return rsMinutes;
+                }
+            } else {
+                return rsHours;
+            }
+        } catch (SQLException e) {
+            log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
+            throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
+        }
+    }
+
+    private ResultSet getResultSetForMinutesIfExists(String query, String tablePrefix, long startTimeStamp,
+            Map<String, Integer> durationBreakdown) throws APIMgtUsageQueryServiceClientException {
+        ResultSet rsMinutes;
+        ResultSet rsSeconds;
+        try {
+            rsMinutes = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.MINUTES_TABLE_TYPE,
+                    startTimeStamp,
+                    this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_MINUTES,
+                            durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MINUTES)));
+            if (rsMinutes == null || !rsMinutes.next()) {
+                rsSeconds = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.SECONDS_TABLE_TYPE,
+                        startTimeStamp,
+                        this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_MINUTES,
+                                durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MINUTES)));
+                if (rsSeconds == null || !rsSeconds.next()) {
+                    return null;
+                } else {
+                    return rsSeconds;
+                }
+            } else {
+                return rsMinutes;
+            }
+        } catch (SQLException e) {
+            log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
+            throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
+        }
+    }
+
+    private ResultSet getResultSetForSecondsIfExists(String query, String tablePrefix, long startTimeStamp,
+            Map<String, Integer> durationBreakdown) throws APIMgtUsageQueryServiceClientException {
+        ResultSet rsSeconds;
+        try {
+            rsSeconds = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.SECONDS_TABLE_TYPE,
+                    startTimeStamp,
+                    this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_SECONDS,
+                            durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_SECONDS)));
+            if (rsSeconds == null || !rsSeconds.next()) {
+                return null;
+            } else {
+                return rsSeconds;
+            }
+        } catch (SQLException e) {
+            log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
+            throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
+        }
     }
 
     /**
