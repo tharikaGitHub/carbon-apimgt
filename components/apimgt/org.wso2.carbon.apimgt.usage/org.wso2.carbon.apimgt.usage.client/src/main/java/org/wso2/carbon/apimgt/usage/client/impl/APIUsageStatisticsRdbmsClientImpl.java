@@ -1850,7 +1850,7 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
                     + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
                     + APIUsageStatisticsClientConstants.NEW_DESTINATION + ',' + "SUM("
                     + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + ") as "
-                    + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + " FROM ? WHERE "
+                    + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + " FROM ApiUsagePerDestinationAggregation_MONTHS WHERE "
                     + APIUsageStatisticsClientConstants.NEW_TIME_STAMP + " BETWEEN ? AND ? GROUP BY "
                     + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
                     + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
@@ -2217,12 +2217,14 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
         Connection connection = null;
         PreparedStatement statement = null;
         ResultSet rs = null;
+        String table = tablePrefix + tableType;
         try {
             connection = dataSource.getConnection();
             statement = connection.prepareStatement(query);
-            statement.setString(1, tablePrefix + tableType);
+            statement.setString(1, table);
             statement.setLong(2, fromDate);
-            statement.setLong(3, toDate);
+            //statement.setLong(3, toDate);
+            System.out.println(query);
             rs = statement.executeQuery();
         } catch (Exception e) {
             log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
