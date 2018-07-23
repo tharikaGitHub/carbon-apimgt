@@ -1850,7 +1850,7 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
                     + APIUsageStatisticsClientConstants.NEW_API_CONTEXT + ','
                     + APIUsageStatisticsClientConstants.NEW_DESTINATION + ',' + "SUM("
                     + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + ") as "
-                    + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + " FROM ApiUsagePerDestinationAggregation_MONTHS WHERE "
+                    + APIUsageStatisticsClientConstants.NEW_TOTAL_REQUEST_COUNT + " FROM tableNamePlaceholder WHERE "
                     + APIUsageStatisticsClientConstants.NEW_TIME_STAMP + " BETWEEN ? AND ? GROUP BY "
                     + APIUsageStatisticsClientConstants.NEW_API_NAME + ','
                     + APIUsageStatisticsClientConstants.NEW_API_VERSION + ','
@@ -2217,21 +2217,20 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
         Connection connection = null;
         PreparedStatement statement = null;
         ResultSet rs = null;
-        String table = tablePrefix + tableType;
+        String tableName = tablePrefix + tableType;
+        String modifiedQuery = query.replace("tableNamePlaceholder", tableName);
         try {
             connection = dataSource.getConnection();
-            statement = connection.prepareStatement(query);
-            statement.setString(1, table);
-            statement.setLong(2, fromDate);
-            //statement.setLong(3, toDate);
-            System.out.println(query);
+            statement = connection.prepareStatement(modifiedQuery);
+            statement.setLong(1, fromDate);
+            statement.setLong(2, toDate);
             rs = statement.executeQuery();
         } catch (Exception e) {
             log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
             throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
-        } finally {
-            closeDatabaseLinks(null, statement, connection);
-        }
+        } //finally {
+//            closeDatabaseLinks(null, statement, connection);
+//        }
         return rs;
     }
 
