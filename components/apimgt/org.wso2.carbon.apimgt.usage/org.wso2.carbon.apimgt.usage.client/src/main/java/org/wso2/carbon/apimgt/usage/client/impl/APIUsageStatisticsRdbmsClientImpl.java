@@ -30,9 +30,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
-import org.joda.time.Months;
 import org.joda.time.Period;
-import org.joda.time.Years;
 import org.json.simple.JSONArray;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.APIProvider;
@@ -76,7 +74,6 @@ import org.wso2.carbon.apimgt.usage.client.pojo.APIUsageByDestination;
 import org.wso2.carbon.apimgt.usage.client.pojo.APIUsageByResourcePath;
 import org.wso2.carbon.apimgt.usage.client.pojo.APIUsageByUser;
 import org.wso2.carbon.apimgt.usage.client.pojo.APIUsageByUserName;
-import org.wso2.carbon.apimgt.usage.client.util.APIUsageClientUtil;
 import org.wso2.carbon.apimgt.usage.client.util.RestClientUtil;
 import org.wso2.carbon.application.mgt.stub.upload.CarbonAppUploaderStub;
 import org.wso2.carbon.application.mgt.stub.upload.types.carbon.UploadedFileItem;
@@ -1164,20 +1161,21 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
         List<API> providerAPIs = getAPIsByProvider(providerName);
         List<APIDestinationUsageDTO> usageByDestination = new ArrayList<APIDestinationUsageDTO>();
 
-        for (APIUsageByDestination usage : usageData) {
-            for (API providerAPI : providerAPIs) {
-                if (providerAPI.getId().getApiName().equals(usage.getApiName()) && providerAPI.getId().getVersion()
-                        .equals(usage.getApiVersion()) && providerAPI.getContext().equals(usage.getContext())) {
-                    APIDestinationUsageDTO usageDTO = new APIDestinationUsageDTO();
-                    usageDTO.setApiName(usage.getApiName());
-                    usageDTO.setVersion(usage.getApiVersion());
-                    usageDTO.setDestination(usage.getDestination());
-                    usageDTO.setContext(usage.getContext());
-                    usageDTO.setCount(usage.getRequestCount());
-                    usageByDestination.add(usageDTO);
-                }
-            }
-        }
+//        for (APIUsageByDestination usage : usageData) {
+//            for (API providerAPI : providerAPIs) {
+//                if (providerAPI.getId().getApiName().equals(usage.getApiName()) && providerAPI.getId().getVersion()
+//                        .equals(usage.getApiVersion()) && providerAPI.getContext().equals(usage.getContext())) {
+//                    APIDestinationUsageDTO usageDTO = new APIDestinationUsageDTO();
+//                    usageDTO.setApiName(usage.getApiName());
+//                    usageDTO.setVersion(usage.getApiVersion());
+//                    usageDTO.setDestination(usage.getDestination());
+//                    usageDTO.setContext(usage.getContext());
+//                    usageDTO.setCount(usage.getRequestCount());
+//                    usageByDestination.add(usageDTO);
+//                }
+//            }
+//       }
+
         return usageByDestination;
     }
 
@@ -2247,32 +2245,32 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
                     startTimeStamp,
                     this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_YEARS,
                             durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS)));
-            if (rsYears == null || !rsYears.next()) { //If there are no entries in the years table
+            if (rsYears == null || !rsYears.isBeforeFirst()) { //If there are no entries in the years table
                 rsMonths = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.MONTHS_TABLE_TYPE,
                         startTimeStamp,
                         this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_YEARS,
                                 durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS)));
-                if (rsMonths == null || !rsMonths.next()) {
+                if (rsMonths == null || !rsMonths.isBeforeFirst()) {
                     rsDays = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.DAYS_TABLE_TYPE,
                             startTimeStamp,
                             this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_YEARS,
                                     durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS)));
-                    if (rsDays == null || !rsDays.next()) {
+                    if (rsDays == null || !rsDays.isBeforeFirst()) {
                         rsHours = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.HOURS_TABLE_TYPE,
                                 startTimeStamp,
                                 this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_YEARS,
                                         durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS)));
-                        if (rsHours == null || !rsHours.next()) {
+                        if (rsHours == null || !rsHours.isBeforeFirst()) {
                             rsMinutes = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.MINUTES_TABLE_TYPE,
                                     startTimeStamp,
                                     this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_YEARS,
                                             durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS)));
-                            if (rsMinutes == null || !rsMinutes.next()) {
+                            if (rsMinutes == null || !rsMinutes.isBeforeFirst()) {
                                 rsSeconds = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.SECONDS_TABLE_TYPE,
                                         startTimeStamp,
                                         this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_YEARS,
                                                 durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS)));
-                                if (rsSeconds == null || !rsSeconds.next()) {
+                                if (rsSeconds == null || !rsSeconds.isBeforeFirst()) {
                                     return null;
                                 } else {
                                     return rsSeconds;
@@ -2310,27 +2308,27 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
                     startTimeStamp,
                     this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_MONTHS,
                             durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS)));
-            if (rsMonths == null || !rsMonths.next()) {
+            if (rsMonths == null || !rsMonths.isBeforeFirst()) {
                 rsDays = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.DAYS_TABLE_TYPE,
                         startTimeStamp,
                         this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_MONTHS,
                                 durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS)));
-                if (rsDays == null || !rsDays.next()) {
+                if (rsDays == null || !rsDays.isBeforeFirst()) {
                     rsHours = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.HOURS_TABLE_TYPE,
                             startTimeStamp,
                             this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_MONTHS,
                                     durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS)));
-                    if (rsHours == null || !rsHours.next()) {
+                    if (rsHours == null || !rsHours.isBeforeFirst()) {
                         rsMinutes = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.MINUTES_TABLE_TYPE,
                                 startTimeStamp,
                                 this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_MONTHS,
                                         durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS)));
-                        if (rsMinutes == null || !rsMinutes.next()) {
+                        if (rsMinutes == null || !rsMinutes.isBeforeFirst()) {
                             rsSeconds = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.SECONDS_TABLE_TYPE,
                                     startTimeStamp,
                                     this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_MONTHS,
                                             durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS)));
-                            if (rsSeconds == null || !rsSeconds.next()) {
+                            if (rsSeconds == null || !rsSeconds.isBeforeFirst()) {
                                 return null;
                             } else {
                                 return rsSeconds;
@@ -2364,22 +2362,22 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
                     startTimeStamp,
                     this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_DAYS,
                             durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_DAYS)));
-            if (rsDays == null || !rsDays.next()) {
+            if (rsDays == null || !rsDays.isBeforeFirst()) {
                 rsHours = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.HOURS_TABLE_TYPE,
                         startTimeStamp,
                         this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_DAYS,
                                 durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_DAYS)));
-                if (rsHours == null || !rsHours.next()) {
+                if (rsHours == null || !rsHours.isBeforeFirst()) {
                     rsMinutes = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.MINUTES_TABLE_TYPE,
                             startTimeStamp,
                             this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_DAYS,
                                     durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_DAYS)));
-                    if (rsMinutes == null || !rsMinutes.next()) {
+                    if (rsMinutes == null || !rsMinutes.isBeforeFirst()) {
                         rsSeconds = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.SECONDS_TABLE_TYPE,
                                 startTimeStamp,
                                 this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_DAYS,
                                         durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_DAYS)));
-                        if (rsSeconds == null || !rsSeconds.next()) {
+                        if (rsSeconds == null || !rsSeconds.isBeforeFirst()) {
                             return null;
                         } else {
                             return rsSeconds;
@@ -2409,17 +2407,17 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
                     startTimeStamp,
                     this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_HOURS,
                             durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_HOURS)));
-            if (rsHours == null || !rsHours.next()) {
+            if (rsHours == null || !rsHours.isBeforeFirst()) {
                 rsMinutes = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.MINUTES_TABLE_TYPE,
                         startTimeStamp,
                         this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_HOURS,
                                 durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_HOURS)));
-                if (rsMinutes == null || !rsMinutes.next()) {
+                if (rsMinutes == null || !rsMinutes.isBeforeFirst()) {
                     rsSeconds = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.SECONDS_TABLE_TYPE,
                             startTimeStamp,
                             this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_HOURS,
                                     durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_HOURS)));
-                    if (rsSeconds == null || !rsSeconds.next()) {
+                    if (rsSeconds == null || !rsSeconds.isBeforeFirst()) {
                         return null;
                     } else {
                         return rsSeconds;
@@ -2445,12 +2443,12 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
                     startTimeStamp,
                     this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_MINUTES,
                             durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MINUTES)));
-            if (rsMinutes == null || !rsMinutes.next()) {
+            if (rsMinutes == null || !rsMinutes.isBeforeFirst()) {
                 rsSeconds = this.fetchResultSet(query, tablePrefix, APIUsageStatisticsClientConstants.SECONDS_TABLE_TYPE,
                         startTimeStamp,
                         this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_MINUTES,
                                 durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MINUTES)));
-                if (rsSeconds == null || !rsSeconds.next()) {
+                if (rsSeconds == null || !rsSeconds.isBeforeFirst()) {
                     return null;
                 } else {
                     return rsSeconds;
@@ -2472,7 +2470,7 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
                     startTimeStamp,
                     this.getEndTimeStamp(startTimeStamp, APIUsageStatisticsClientConstants.DURATION_SECONDS,
                             durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_SECONDS)));
-            if (rsSeconds == null || !rsSeconds.next()) {
+            if (rsSeconds == null || !rsSeconds.isBeforeFirst()) {
                 return null;
             } else {
                 return rsSeconds;

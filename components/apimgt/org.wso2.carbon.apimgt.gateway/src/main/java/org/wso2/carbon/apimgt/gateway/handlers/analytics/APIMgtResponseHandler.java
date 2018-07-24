@@ -19,6 +19,7 @@ package org.wso2.carbon.apimgt.gateway.handlers.analytics;
 import org.apache.axiom.soap.SOAPBody;
 import org.apache.axiom.soap.SOAPEnvelope;
 import org.apache.http.HttpHeaders;
+import org.apache.solr.common.StringUtils;
 import org.apache.synapse.MessageContext;
 import org.apache.synapse.SynapseConstants;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
@@ -142,6 +143,9 @@ public class APIMgtResponseHandler extends APIMgtCommonExecutionPublisher {
             }
             //get the version
             apiVersion = apiVersion.split(":")[1];
+            if (!StringUtils.isEmpty(apiVersion)) {
+                apiVersion = apiVersion.substring(1);
+            }
             String url = (String) mc.getProperty(RESTConstants.REST_URL_PREFIX);
 
             URL apiurl = new URL(url);
