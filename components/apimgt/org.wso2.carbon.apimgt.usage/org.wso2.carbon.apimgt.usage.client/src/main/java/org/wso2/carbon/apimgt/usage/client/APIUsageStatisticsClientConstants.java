@@ -194,6 +194,8 @@ public final class APIUsageStatisticsClientConstants {
 
     public static final String API_USAGE_PER_DESTINATION_AGGREGATION = "ApiUsagePerDestinationAggregation";
 
+    public static final String API_USAGE_AGGREGATION = "ApiUsageAggregation";
+
     public static final String API_NAME = "apiName"; //previously api
 
     public static final String THE_API_VERSION = "apiVersion"; //version
