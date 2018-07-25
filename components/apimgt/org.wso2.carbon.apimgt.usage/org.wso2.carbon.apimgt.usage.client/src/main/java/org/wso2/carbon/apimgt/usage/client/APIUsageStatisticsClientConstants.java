@@ -189,4 +189,52 @@ public final class APIUsageStatisticsClientConstants {
     public static final String RES_MEDIATION_LATENCY = "responseMediationLatency";
     public static final String BACKEND_LATENCY = "backendLatency";
     public static final String OTHER_LATENCY = "otherLatency";
+
+    //------------------------------------------------------------------------------------
+
+    public static final String API_USAGE_PER_DESTINATION_AGGREGATION = "ApiUsagePerDestinationAggregation";
+
+    public static final String API_NAME = "apiName"; //previously api
+
+    public static final String THE_API_VERSION = "apiVersion"; //version
+
+    public static final String API_CREATOR = "apiCreator"; //apiPublisher
+
+    public static final String API_CONTEXT = "apiContext"; //context
+
+    public static final String THE_DESTINATION= "destination"; //destination
+
+    public static final String THE_TOTAL_REQUEST_COUNT = "AGG_COUNT"; //total_request_count
+
+    public static final String TIME_STAMP= "AGG_TIMESTAMP"; //time
+
+    public static final String REQUEST_TIME_STAMP= "requestTimestamp";
+
+    public static final String TIMESTAMP_PATTERN = "yyyy-MM-dd HH:mm:ss";
+
+    public static final String SECONDS_TABLE = "_SECONDS";
+
+    public static final String MINUTES_TABLE = "_MINUTES";
+
+    public static final String HOURS_TABLE = "_HOURS";
+
+    public static final String DAYS_TABLE = "_DAYS";
+
+    public static final String MONTHS_TABLE = "_MONTHS";
+
+    public static final String YEARS_TABLE = "_YEARS";
+
+    public static final String DURATION_SECONDS = "SECONDS";
+
+    public static final String DURATION_MINUTES = "MINUTES";
+
+    public static final String DURATION_HOURS = "HOURS";
+
+    public static final String DURATION_DAYS = "DAYS";
+
+    public static final String DURATION_MONTHS = "MONTHS";
+
+    public static final String DURATION_YEARS = "YEARS";
+
+
 }
