@@ -196,6 +196,8 @@ public final class APIUsageStatisticsClientConstants {
 
     public static final String API_USAGE_AGGREGATION = "ApiUsageAggregation";
 
+    public static final String API_USAGE_PER_RESOURCE_PATH_AGGREGATION = "ApiUsagePerResourcePathAggregation";
+
     public static final String API_NAME = "apiName"; //previously api
 
     public static final String THE_API_VERSION = "apiVersion"; //version
@@ -206,11 +208,15 @@ public final class APIUsageStatisticsClientConstants {
 
     public static final String THE_DESTINATION= "destination"; //destination
 
+    public static final String API_METHOD = "apiMethod"; //method
+
     public static final String THE_TOTAL_REQUEST_COUNT = "AGG_COUNT"; //total_request_count
 
     public static final String TIME_STAMP= "AGG_TIMESTAMP"; //time
 
     public static final String REQUEST_TIME_STAMP= "requestTimestamp";
+
+    public static final String API_RESOURCE_TEMPLATE = "apiResourceTemplate";
 
     public static final String TIMESTAMP_PATTERN = "yyyy-MM-dd HH:mm:ss";
 
