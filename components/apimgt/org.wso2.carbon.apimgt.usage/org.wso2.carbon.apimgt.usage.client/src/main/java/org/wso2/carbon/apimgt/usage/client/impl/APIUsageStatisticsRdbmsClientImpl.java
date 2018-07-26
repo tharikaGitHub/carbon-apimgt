@@ -2136,23 +2136,27 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
 
     /**
      * This method find the api usage count and it's subscribers
+     *
      * @param providerName logged API publisher
-     * @param fromDate starting data
-     * @param toDate ending date
-     * @param limit result to be limited
+     * @param fromDate     starting data
+     * @param toDate       ending date
+     * @param limit        result to be limited
      * @return list of APIUsageByUserName
      * @throws APIMgtUsageQueryServiceClientException throws if error occurred
      */
     private List<APIUsageByUserName> getAPIUsageByUserData(String providerName, String fromDate, String toDate,
             Integer limit) throws APIMgtUsageQueryServiceClientException {
         if (dataSource == null) {
-            handleException("BAM data source hasn't been initialized. Ensure that the data source " +
-                    "is properly configured in the APIUsageTracker configuration.");
+            handleException("BAM data source hasn't been initialized. Ensure that the data source "
+                    + "is properly configured in the APIUsageTracker configuration.");
         }
 
         Connection connection = null;
-        PreparedStatement preparedStatement = null;
+        PreparedStatement statement1 = null;
+        PreparedStatement statement2 = null;
+        PreparedStatement statement3 = null;
         ResultSet rs = null;
+        String modifiedQuery;
         String tenantDomain = MultitenantUtils.getTenantDomain(providerName);
         try {
             connection = dataSource.getConnection();
@@ -2160,109 +2164,100 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
             String oracleQuery;
             String msSqlQuery;
             String filter;
+
+            DateFormat dateFormat = new SimpleDateFormat(APIUsageStatisticsClientConstants.TIMESTAMP_PATTERN);
+            Date startDate = dateFormat.parse(fromDate);
+            Date endDate = dateFormat.parse(toDate);
+            long startTimeStamp = startDate.getTime();
+            long endTimeStamp = endDate.getTime();
+
+            Map<String, Integer> durationBreakdown = this.getDurationBreakdown(startTimeStamp, endTimeStamp);
+
             if (providerName.contains(APIUsageStatisticsClientConstants.ALL_PROVIDERS)) {
                 if (MultitenantConstants.SUPER_TENANT_DOMAIN_NAME.equals(tenantDomain)) {
-                    filter = APIUsageStatisticsClientConstants.CONTEXT + " not like '%/t/%'";
+                    filter = APIUsageStatisticsClientConstants.API_CONTEXT + " not like '%/t/%'";
                 } else {
-                    filter = APIUsageStatisticsClientConstants.CONTEXT + " like '%" + tenantDomain + "%'";
+                    filter = APIUsageStatisticsClientConstants.API_CONTEXT + " like '%" + tenantDomain + "%'";
                 }
             } else {
-                filter = APIUsageStatisticsClientConstants.API_PUBLISHER + " = '" + providerName + "'";
+                filter = APIUsageStatisticsClientConstants.API_CREATOR + " = '" + providerName + "'";
             }
 
             if (fromDate != null && toDate != null) {
-                query = "SELECT " + APIUsageStatisticsClientConstants.API + ','
-                        + APIUsageStatisticsClientConstants.API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.VERSION + ','
-                        + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                        + APIUsageStatisticsClientConstants.USER_ID + ", SUM("
-                        + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + ") AS TOTAL_REQUEST_COUNT, "
-                        + APIUsageStatisticsClientConstants.CONTEXT +
-                        " FROM " + APIUsageStatisticsClientConstants.API_REQUEST_SUMMARY + " WHERE "
-                        + APIUsageStatisticsClientConstants.TIME + " BETWEEN " +
-                        " ? AND ? AND " + filter +
-                        " GROUP BY " + APIUsageStatisticsClientConstants.API + ','
-                        + APIUsageStatisticsClientConstants.API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.USER_ID + ',' + APIUsageStatisticsClientConstants.VERSION
-                        + ',' + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                        + APIUsageStatisticsClientConstants.CONTEXT + " ORDER BY "
-                        + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + " DESC ";
-                oracleQuery = "SELECT " + APIUsageStatisticsClientConstants.API + ','
-                        + APIUsageStatisticsClientConstants.API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.VERSION + ','
-                        + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                        + APIUsageStatisticsClientConstants.USER_ID + ", SUM("
-                        + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + ") AS TOTAL_REQUEST_COUNT, "
-                        + APIUsageStatisticsClientConstants.CONTEXT +
-                        " FROM " + APIUsageStatisticsClientConstants.API_REQUEST_SUMMARY + " WHERE "
-                        + APIUsageStatisticsClientConstants.TIME + " BETWEEN " +
-                        "? AND ? AND " + filter +
-                        " GROUP BY " + APIUsageStatisticsClientConstants.API + ','
-                        + APIUsageStatisticsClientConstants.API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.VERSION + ',' + APIUsageStatisticsClientConstants.USER_ID
-                        + ',' + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                        + APIUsageStatisticsClientConstants.CONTEXT + " ORDER BY "
-                        + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + " DESC";
-                msSqlQuery = "SELECT " + APIUsageStatisticsClientConstants.API + ','
-                        + APIUsageStatisticsClientConstants.API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.VERSION + ','
-                        + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                        + APIUsageStatisticsClientConstants.USER_ID + ", SUM("
-                        + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + ") AS TOTAL_REQUEST_COUNT, "
-                        + APIUsageStatisticsClientConstants.CONTEXT +
-                        " FROM " + APIUsageStatisticsClientConstants.API_REQUEST_SUMMARY + " WHERE "
-                        + APIUsageStatisticsClientConstants.TIME + " BETWEEN " +
-                        "? AND ? AND " + filter +
-                        " GROUP BY " + APIUsageStatisticsClientConstants.API + ','
-                        + APIUsageStatisticsClientConstants.API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.USER_ID + ',' + APIUsageStatisticsClientConstants.VERSION
-                        + ',' + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                        + APIUsageStatisticsClientConstants.CONTEXT + " ORDER BY "
-                        + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + " DESC";
+                query = "SELECT " + APIUsageStatisticsClientConstants.API_NAME + ','
+                        + APIUsageStatisticsClientConstants.THE_API_VERSION + ','
+                        + APIUsageStatisticsClientConstants.API_CREATOR + ','
+                        + APIUsageStatisticsClientConstants.USER_NAME + ", SUM("
+                        + APIUsageStatisticsClientConstants.THE_TOTAL_REQUEST_COUNT + ") AS TOTAL_COUNT_OF_REQUESTS, "
+                        + APIUsageStatisticsClientConstants.API_CONTEXT + " FROM tableNamePlaceholder WHERE "
+                        + APIUsageStatisticsClientConstants.TIME_STAMP + " BETWEEN " + " ? AND ? AND " + filter
+                        + " GROUP BY " + APIUsageStatisticsClientConstants.API_NAME + ','
+                        + APIUsageStatisticsClientConstants.USER_NAME + ','
+                        + APIUsageStatisticsClientConstants.THE_API_VERSION + ','
+                        + APIUsageStatisticsClientConstants.API_CREATOR + ','
+                        + APIUsageStatisticsClientConstants.API_CONTEXT + " ORDER BY "
+                        + APIUsageStatisticsClientConstants.TOTAL_COUNT_OF_REQUESTS + " DESC ";
+                oracleQuery = "SELECT " + APIUsageStatisticsClientConstants.API_NAME + ','
+                        + APIUsageStatisticsClientConstants.THE_API_VERSION + ','
+                        + APIUsageStatisticsClientConstants.API_CREATOR + ','
+                        + APIUsageStatisticsClientConstants.USER_NAME + ", SUM("
+                        + APIUsageStatisticsClientConstants.THE_TOTAL_REQUEST_COUNT + ") AS TOTAL_COUNT_OF_REQUESTS, "
+                        + APIUsageStatisticsClientConstants.API_CONTEXT + " FROM tableNamePlaceholder WHERE "
+                        + APIUsageStatisticsClientConstants.TIME_STAMP + " BETWEEN " + "? AND ? AND " + filter
+                        + " GROUP BY " + APIUsageStatisticsClientConstants.API_NAME + ','
+                        + APIUsageStatisticsClientConstants.THE_API_VERSION + ','
+                        + APIUsageStatisticsClientConstants.USER_NAME + ','
+                        + APIUsageStatisticsClientConstants.API_CREATOR + ','
+                        + APIUsageStatisticsClientConstants.API_CONTEXT + " ORDER BY "
+                        + APIUsageStatisticsClientConstants.TOTAL_COUNT_OF_REQUESTS + " DESC";
+                msSqlQuery = "SELECT " + APIUsageStatisticsClientConstants.API_NAME + ','
+                        + APIUsageStatisticsClientConstants.THE_API_VERSION + ','
+                        + APIUsageStatisticsClientConstants.API_CREATOR + ','
+                        + APIUsageStatisticsClientConstants.USER_NAME + ", SUM("
+                        + APIUsageStatisticsClientConstants.THE_TOTAL_REQUEST_COUNT + ") AS TOTAL_COUNT_OF_REQUESTS, "
+                        + APIUsageStatisticsClientConstants.API_CONTEXT + " FROM tableNamePlaceholder WHERE "
+                        + APIUsageStatisticsClientConstants.TIME_STAMP + " BETWEEN " + "? AND ? AND " + filter
+                        + " GROUP BY " + APIUsageStatisticsClientConstants.API_NAME + ','
+                        + APIUsageStatisticsClientConstants.THE_API_VERSION + ','
+                        + APIUsageStatisticsClientConstants.USER_NAME + ','
+                        + APIUsageStatisticsClientConstants.API_CREATOR + ','
+                        + APIUsageStatisticsClientConstants.API_CONTEXT + " ORDER BY "
+                        + APIUsageStatisticsClientConstants.TOTAL_COUNT_OF_REQUESTS + " DESC";
             } else {
-                query = "SELECT " + APIUsageStatisticsClientConstants.API + ','
-                        + APIUsageStatisticsClientConstants.API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.VERSION + ','
-                        + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                        + APIUsageStatisticsClientConstants.USER_ID + ", SUM("
-                        + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + ") AS TOTAL_REQUEST_COUNT, "
-                        + APIUsageStatisticsClientConstants.CONTEXT +
-                        " FROM " + APIUsageStatisticsClientConstants.API_REQUEST_SUMMARY +
-                        " WHERE " + filter +
-                        " GROUP BY " + APIUsageStatisticsClientConstants.API + ','
-                        + APIUsageStatisticsClientConstants.API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                        + APIUsageStatisticsClientConstants.USER_ID + " ORDER BY "
-                        + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + " DESC ";
-                oracleQuery = "SELECT " + APIUsageStatisticsClientConstants.API + ','
-                        + APIUsageStatisticsClientConstants.API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.VERSION + ','
-                        + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                        + APIUsageStatisticsClientConstants.USER_ID + ", SUM("
-                        + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + ") AS TOTAL_REQUEST_COUNT, "
-                        + APIUsageStatisticsClientConstants.CONTEXT +
-                        " FROM " + APIUsageStatisticsClientConstants.API_REQUEST_SUMMARY +
-                        " WHERE " + filter +
-                        " GROUP BY " + APIUsageStatisticsClientConstants.API + ','
-                        + APIUsageStatisticsClientConstants.API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.VERSION + ','
-                        + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                        + APIUsageStatisticsClientConstants.USER_ID + ',' + APIUsageStatisticsClientConstants.CONTEXT
-                        + " ORDER BY " + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + " DESC ";
-                msSqlQuery = "SELECT  " + APIUsageStatisticsClientConstants.API + ','
-                        + APIUsageStatisticsClientConstants.API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.VERSION + ','
-                        + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                        + APIUsageStatisticsClientConstants.USER_ID + ", SUM("
-                        + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + ") AS TOTAL_REQUEST_COUNT, "
-                        + APIUsageStatisticsClientConstants.CONTEXT +
-                        " FROM " + APIUsageStatisticsClientConstants.API_REQUEST_SUMMARY +
-                        " WHERE " + filter +
-                        " GROUP BY " + APIUsageStatisticsClientConstants.API + ','
-                        + APIUsageStatisticsClientConstants.API_VERSION + ','
-                        + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                        + APIUsageStatisticsClientConstants.USER_ID + " ORDER BY "
-                        + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + " DESC ";
+                query = "SELECT " + APIUsageStatisticsClientConstants.API_NAME + ','
+                        + APIUsageStatisticsClientConstants.THE_API_VERSION + ','
+                        + APIUsageStatisticsClientConstants.API_CREATOR + ','
+                        + APIUsageStatisticsClientConstants.USER_NAME + ", SUM("
+                        + APIUsageStatisticsClientConstants.THE_TOTAL_REQUEST_COUNT + ") AS TOTAL_COUNT_OF_REQUESTS, "
+                        + APIUsageStatisticsClientConstants.API_CONTEXT + " FROM tableNamePlaceholder WHERE " + filter
+                        + " GROUP BY " + APIUsageStatisticsClientConstants.API_NAME + ','
+                        + APIUsageStatisticsClientConstants.THE_API_VERSION + ','
+                        + APIUsageStatisticsClientConstants.API_CREATOR + ','
+                        + APIUsageStatisticsClientConstants.USER_NAME + " ORDER BY "
+                        + APIUsageStatisticsClientConstants.TOTAL_COUNT_OF_REQUESTS + " DESC ";
+                oracleQuery = "SELECT " + APIUsageStatisticsClientConstants.API_NAME + ','
+                        + APIUsageStatisticsClientConstants.THE_API_VERSION + ','
+                        + APIUsageStatisticsClientConstants.API_CREATOR + ','
+                        + APIUsageStatisticsClientConstants.USER_NAME + ", SUM("
+                        + APIUsageStatisticsClientConstants.THE_TOTAL_REQUEST_COUNT + ") AS TOTAL_COUNT_OF_REQUESTS, "
+                        + APIUsageStatisticsClientConstants.API_CONTEXT + " FROM tableNamePlaceholder WHERE " + filter
+                        + " GROUP BY " + APIUsageStatisticsClientConstants.API_NAME + ','
+                        + APIUsageStatisticsClientConstants.THE_API_VERSION + ','
+                        + APIUsageStatisticsClientConstants.API_CREATOR + ','
+                        + APIUsageStatisticsClientConstants.USER_NAME + ','
+                        + APIUsageStatisticsClientConstants.API_CONTEXT + " ORDER BY "
+                        + APIUsageStatisticsClientConstants.TOTAL_COUNT_OF_REQUESTS + " DESC ";
+                msSqlQuery = "SELECT  " + APIUsageStatisticsClientConstants.API_NAME + ','
+                        + APIUsageStatisticsClientConstants.THE_API_VERSION + ','
+                        + APIUsageStatisticsClientConstants.API_CREATOR + ','
+                        + APIUsageStatisticsClientConstants.USER_NAME + ", SUM("
+                        + APIUsageStatisticsClientConstants.THE_TOTAL_REQUEST_COUNT + ") AS TOTAL_COUNT_OF_REQUESTS, "
+                        + APIUsageStatisticsClientConstants.API_CONTEXT + " FROM tableNamePlaceholder WHERE " + filter
+                        + " GROUP BY " + APIUsageStatisticsClientConstants.API_NAME + ','
+                        + APIUsageStatisticsClientConstants.THE_API_VERSION + ','
+                        + APIUsageStatisticsClientConstants.API_CREATOR + ','
+                        + APIUsageStatisticsClientConstants.USER_NAME + " ORDER BY "
+                        + APIUsageStatisticsClientConstants.TOTAL_COUNT_OF_REQUESTS + " DESC ";
             }
             if ((connection.getMetaData().getDriverName()).contains("Oracle")) {
                 query = oracleQuery;
@@ -2270,40 +2265,147 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
             if (connection.getMetaData().getDatabaseProductName().contains("Microsoft")) {
                 query = msSqlQuery;
             }
-            preparedStatement = connection.prepareStatement(query);
-            if(query.contains("?")){
-                preparedStatement.setString(1, fromDate);
-                preparedStatement.setString(2, toDate);
-            }
 
-            rs = preparedStatement.executeQuery();
+            if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS) > 0) {
+                //start checking from the month table down
+                modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                        APIUsageStatisticsClientConstants.API_USAGE_AGGREGATION
+                                + APIUsageStatisticsClientConstants.MONTHS_TABLE);
+                statement1 = connection.prepareStatement(modifiedQuery);
+                if (query.contains("?")) {
+                    statement1.setLong(1, startTimeStamp);
+                    statement1.setLong(2, endTimeStamp);
+                }
+                rs = statement1.executeQuery();
+                if (!rs.next()) { //check in the Days table
+                    modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                            APIUsageStatisticsClientConstants.API_USAGE_AGGREGATION
+                                    + APIUsageStatisticsClientConstants.DAYS_TABLE);
+                    statement2 = connection.prepareStatement(modifiedQuery);
+                    if (query.contains("?")) {
+                        statement2.setLong(1, startTimeStamp);
+                        statement2.setLong(2, endTimeStamp);
+                    }
+                    rs = statement2.executeQuery();
+                    if (!rs.next()) {
+                        modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                APIUsageStatisticsClientConstants.API_USAGE_AGGREGATION
+                                        + APIUsageStatisticsClientConstants.HOURS_TABLE);
+                        statement3 = connection.prepareStatement(modifiedQuery);
+                        if (query.contains("?")) {
+                            statement3.setLong(1, startTimeStamp);
+                            statement3.setLong(2, endTimeStamp);
+                        }
+                        rs = statement3.executeQuery();
+                        if (!rs.next()) {
+                            rs = null;
+                        }
+                    }
+                }
+            } else if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS) > 0) {
+                //start checking from the days table down
+                modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                        APIUsageStatisticsClientConstants.API_USAGE_AGGREGATION
+                                + APIUsageStatisticsClientConstants.DAYS_TABLE);
+                statement1 = connection.prepareStatement(modifiedQuery);
+                if (query.contains("?")) {
+                    statement1.setLong(1, startTimeStamp);
+                    statement1.setLong(2, endTimeStamp);
+                }
+                rs = statement1.executeQuery();
+                if (!rs.next()) {
+                    modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                            APIUsageStatisticsClientConstants.API_USAGE_AGGREGATION
+                                    + APIUsageStatisticsClientConstants.HOURS_TABLE);
+                    statement2 = connection.prepareStatement(modifiedQuery);
+                    if (query.contains("?")) {
+                        statement2.setLong(1, startTimeStamp);
+                        statement2.setLong(2, endTimeStamp);
+                    }
+                    rs = statement2.executeQuery();
+                    if (!rs.next()) {
+                        modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                APIUsageStatisticsClientConstants.API_USAGE_AGGREGATION
+                                        + APIUsageStatisticsClientConstants.MINUTES_TABLE);
+                        statement3 = connection.prepareStatement(modifiedQuery);
+                        if (query.contains("?")) {
+                            statement3.setLong(1, startTimeStamp);
+                            statement3.setLong(2, endTimeStamp);
+                            rs = statement3.executeQuery();
+                        }
+                        if (!rs.next()) {
+                            rs = null;
+                        }
+                    }
+                }
+            } else if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_DAYS) > 0) {
+                //start checking from the hours table down
+                modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                        APIUsageStatisticsClientConstants.API_USAGE_AGGREGATION
+                                + APIUsageStatisticsClientConstants.HOURS_TABLE);
+                statement1 = connection.prepareStatement(modifiedQuery);
+                if (query.contains("?")) {
+                    statement1.setLong(1, startTimeStamp);
+                    statement1.setLong(2, endTimeStamp);
+                }
+                rs = statement1.executeQuery();
+                if (!rs.next()) {
+                    modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                            APIUsageStatisticsClientConstants.API_USAGE_AGGREGATION
+                                    + APIUsageStatisticsClientConstants.MINUTES_TABLE);
+                    statement2 = connection.prepareStatement(modifiedQuery);
+                    if (query.contains("?")) {
+                        statement2.setLong(1, startTimeStamp);
+                        statement2.setLong(2, endTimeStamp);
+                    }
+                    rs = statement2.executeQuery();
+                    if (!rs.next()) {
+                        modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                APIUsageStatisticsClientConstants.API_USAGE_AGGREGATION
+                                        + APIUsageStatisticsClientConstants.SECONDS_TABLE);
+                        statement3 = connection.prepareStatement(modifiedQuery);
+                        if (query.contains("?")) {
+                            statement3.setLong(1, startTimeStamp);
+                            statement3.setLong(2, endTimeStamp);
+                        }
+                        rs = statement3.executeQuery();
+                        if (!rs.next()) {
+                            rs = null;
+                        }
+                    }
+                }
+            }
             List<APIUsageByUserName> usageByName = new ArrayList<APIUsageByUserName>();
             String apiName;
             String apiVersion;
             String context;
             String userID;
             long requestCount;
-            String publisher;
+            String creator;
 
-            while (rs.next()) {
-                apiName = rs.getString(APIUsageStatisticsClientConstants.API);
-                apiVersion = rs.getString(APIUsageStatisticsClientConstants.VERSION);
-                context = rs.getString("api");
-                userID = rs.getString(APIUsageStatisticsClientConstants.USER_ID);
-                requestCount = rs.getLong(APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT);
-                publisher = rs.getString(APIUsageStatisticsClientConstants.API_PUBLISHER);
-                if (publisher != null) {
-                    APIUsageByUserName usage = new APIUsageByUserName(apiName, apiVersion, context, userID, publisher,
-                            requestCount);
-                    usageByName.add(usage);
-                }
+            if (rs != null) {
+                do {
+                    apiName = rs.getString(APIUsageStatisticsClientConstants.API_NAME);
+                    apiVersion = rs.getString(APIUsageStatisticsClientConstants.THE_API_VERSION);
+                    context = rs.getString(APIUsageStatisticsClientConstants.API_CONTEXT);
+                    userID = rs.getString(APIUsageStatisticsClientConstants.USER_NAME);
+                    requestCount = rs.getLong(APIUsageStatisticsClientConstants.TOTAL_COUNT_OF_REQUESTS);
+                    creator = rs.getString(APIUsageStatisticsClientConstants.API_CREATOR);
+                    if (creator != null) {
+                        APIUsageByUserName usage = new APIUsageByUserName(apiName, apiVersion, context, userID, creator,
+                                requestCount);
+                        usageByName.add(usage);
+                    }
+                } while (rs.next());
             }
             return usageByName;
         } catch (Exception e) {
             log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
             throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
         } finally {
-            closeDatabaseLinks(rs, preparedStatement, connection);
+            closeDatabaseLinks(rs, statement1, connection);
+            closeDatabaseLinks(null, statement2, null);
+            closeDatabaseLinks(null, statement3, null);
         }
     }
 

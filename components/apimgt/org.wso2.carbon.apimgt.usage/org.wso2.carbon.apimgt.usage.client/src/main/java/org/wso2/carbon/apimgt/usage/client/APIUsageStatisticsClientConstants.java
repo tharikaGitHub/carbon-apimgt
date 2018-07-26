@@ -212,9 +212,13 @@ public final class APIUsageStatisticsClientConstants {
 
     public static final String THE_TOTAL_REQUEST_COUNT = "AGG_COUNT"; //total_request_count
 
+    public static final String TOTAL_COUNT_OF_REQUESTS = "TOTAL_COUNT_OF_REQUESTS";
+
     public static final String TIME_STAMP= "AGG_TIMESTAMP"; //time
 
     public static final String REQUEST_TIME_STAMP= "requestTimestamp";
+
+    public static final String USER_NAME = "username";
 
     public static final String API_RESOURCE_TEMPLATE = "apiResourceTemplate";
 
