@@ -200,6 +200,8 @@ public final class APIUsageStatisticsClientConstants {
 
     public static final String API_LAST_ACCESS_AGGREGATION = "ApiLastAccessAggregation";
 
+    public static final String API_USAGE_PER_VERSION_AGGREGATION = "ApiUsagePerVersionAggregation";
+
     public static final String API_NAME = "apiName"; //previously api
 
     public static final String THE_API_VERSION = "apiVersion"; //version

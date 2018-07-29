@@ -756,7 +756,7 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
                 }
             }
         } catch (ParseException e) {
-            handleException("Error occured while generating timestamp of start and end dates", e);
+            handleException("Error occurred while generating timestamp of start and end dates", e);
         } catch (SQLException e) {
             handleException("Error occurred while querying top api users data from JDBC database", e);
         } finally {
@@ -1108,21 +1108,21 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
      * @param providerName Name of the API provider
      * @return a List of APIUsageDTO objects - possibly empty
      * @throws org.wso2.carbon.apimgt.usage.client.exception.APIMgtUsageQueryServiceClientException if an error occurs
-     *             while contacting backend services
+     *                                                                                              while contacting
+     *                                                                                              backend services
      */
     @Override
     public List<APIUsageDTO> getProviderAPIUsage(String providerName, String fromDate, String toDate, int limit)
             throws APIMgtUsageQueryServiceClientException {
 
-        Collection<APIUsage> usageData = getAPIUsageData(APIUsageStatisticsClientConstants.API_VERSION_USAGE_SUMMARY,
-                fromDate, toDate);
+        Collection<APIUsage> usageData = getAPIUsageData(
+                APIUsageStatisticsClientConstants.API_USAGE_PER_VERSION_AGGREGATION, fromDate, toDate);
         List<API> providerAPIs = getAPIsByProvider(providerName);
         Map<String, APIUsageDTO> usageByAPIs = new TreeMap<String, APIUsageDTO>();
         for (APIUsage usage : usageData) {
             for (API providerAPI : providerAPIs) {
-                if (providerAPI.getId().getApiName().equals(usage.getApiName()) &&
-                        providerAPI.getId().getVersion().equals(usage.getApiVersion()) &&
-                        providerAPI.getContext().equals(usage.getContext())) {
+                if (providerAPI.getId().getApiName().equals(usage.getApiName()) && providerAPI.getId().getVersion()
+                        .equals(usage.getApiVersion()) && providerAPI.getContext().equals(usage.getContext())) {
                     String[] apiData = { usage.getApiName(), usage.getApiVersion(),
                             providerAPI.getId().getProviderName() };
 
@@ -1149,59 +1149,160 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
     /**
      * This method gets the usage data for a given API across all versions
      *
-     * @param tableName name of the table in the database
+     * @param tablePrefix name(prefix) of the table in the database
      * @return a collection containing the API usage data
      * @throws APIMgtUsageQueryServiceClientException if an error occurs while querying the database
      */
-    private Collection<APIUsage> getAPIUsageData(String tableName, String fromDate, String toDate)
+    private Collection<APIUsage> getAPIUsageData(String tablePrefix, String fromDate, String toDate)
             throws APIMgtUsageQueryServiceClientException {
 
         Connection connection = null;
-        PreparedStatement statement = null;
-        ResultSet resultSet = null;
+        PreparedStatement statement1 = null;
+        PreparedStatement statement2 = null;
+        PreparedStatement statement3 = null;
+        ResultSet rs = null;
+        String modifiedQuery;
         Collection<APIUsage> usageDataList = new ArrayList<APIUsage>();
         try {
             connection = dataSource.getConnection();
             String query;
-            //check whether table exist first
-            if (isTableExist(tableName, connection)) {
+            //check whether table aggregation exist first
+            if (isTableAggregationExist(tablePrefix, connection)) {
 
                 if (connection.getMetaData().getDatabaseProductName().contains("DB2")) {
-                    query = "SELECT " +
-                            APIUsageStatisticsClientConstants.API + "," +
-                            APIUsageStatisticsClientConstants.CONTEXT + "," +
-                            APIUsageStatisticsClientConstants.VERSION + "," +
-                            "SUM(" + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + ") AS aggregateSum " +
-                            " FROM " + tableName + " GROUP BY " + APIUsageStatisticsClientConstants.API + "," +
-                            APIUsageStatisticsClientConstants.CONTEXT + "," + APIUsageStatisticsClientConstants.VERSION;
-                    statement = connection.prepareStatement(query);
+                    query = "SELECT " + APIUsageStatisticsClientConstants.API_NAME + ","
+                            + APIUsageStatisticsClientConstants.API_CONTEXT + ","
+                            + APIUsageStatisticsClientConstants.THE_API_VERSION + "," + "SUM("
+                            + APIUsageStatisticsClientConstants.THE_TOTAL_REQUEST_COUNT + ") AS aggregateSum "
+                            + " FROM tableNamePlaceholder GROUP BY " + APIUsageStatisticsClientConstants.API_NAME + ","
+                            + APIUsageStatisticsClientConstants.API_CONTEXT + ","
+                            + APIUsageStatisticsClientConstants.THE_API_VERSION;
+                    modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                            tablePrefix + APIUsageStatisticsClientConstants.MINUTES_TABLE);
+                    statement1 = connection.prepareStatement(modifiedQuery);
+                    rs = statement1.executeQuery();
+                    rs.next(); //read the result set one record forward for the do while loop to correctly function
                 } else {
-                    query = "SELECT " +
-                            APIUsageStatisticsClientConstants.API + "," +
-                            APIUsageStatisticsClientConstants.CONTEXT + "," +
-                            APIUsageStatisticsClientConstants.VERSION + "," +
-                            "SUM(" + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + ") AS aggregateSum " +
-                            " FROM " + tableName + " WHERE " + APIUsageStatisticsClientConstants.TIME + " BETWEEN ? AND ? " +
-                            " GROUP BY " + APIUsageStatisticsClientConstants.API + "," +
-                            APIUsageStatisticsClientConstants.CONTEXT + "," + APIUsageStatisticsClientConstants.VERSION;
-                    statement = connection.prepareStatement(query);
-                    statement.setString(1, fromDate);
-                    statement.setString(2, toDate);
-                }
 
-                resultSet = statement.executeQuery();
-                while (resultSet.next()) {
-                    String apiName = resultSet.getString(APIUsageStatisticsClientConstants.API);
-                    String context = resultSet.getString(APIUsageStatisticsClientConstants.CONTEXT);
-                    String version = resultSet.getString(APIUsageStatisticsClientConstants.VERSION);
-                    long requestCount = resultSet.getLong("aggregateSum");
-                    usageDataList.add(new APIUsage(apiName, context, version, requestCount));
+                    DateFormat dateFormat = new SimpleDateFormat(APIUsageStatisticsClientConstants.TIMESTAMP_PATTERN);
+                    Date startDate = dateFormat.parse(fromDate);
+                    Date endDate = dateFormat.parse(toDate);
+                    long startTimeStamp = startDate.getTime();
+                    long endTimeStamp = endDate.getTime();
+
+                    Map<String, Integer> durationBreakdown = this.getDurationBreakdown(startTimeStamp, endTimeStamp);
+
+                    query = "SELECT " + APIUsageStatisticsClientConstants.API_NAME + ","
+                            + APIUsageStatisticsClientConstants.API_CONTEXT + ","
+                            + APIUsageStatisticsClientConstants.THE_API_VERSION + "," + "SUM("
+                            + APIUsageStatisticsClientConstants.THE_TOTAL_REQUEST_COUNT + ") AS aggregateSum "
+                            + " FROM tableNamePlaceholder WHERE " + APIUsageStatisticsClientConstants.TIME_STAMP
+                            + " BETWEEN ? AND ? " + " GROUP BY " + APIUsageStatisticsClientConstants.API_NAME + ","
+                            + APIUsageStatisticsClientConstants.API_CONTEXT + ","
+                            + APIUsageStatisticsClientConstants.THE_API_VERSION;
+
+                    if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS) > 0) {
+                        //start checking from the month table down
+                        modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                tablePrefix + APIUsageStatisticsClientConstants.MONTHS_TABLE);
+                        statement1 = connection.prepareStatement(modifiedQuery);
+                        statement1.setLong(1, startTimeStamp);
+                        statement1.setLong(2, endTimeStamp);
+                        rs = statement1.executeQuery();
+                        if (!rs.next()) { //check in the Days table
+                            modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                    tablePrefix + APIUsageStatisticsClientConstants.DAYS_TABLE);
+                            statement2 = connection.prepareStatement(modifiedQuery);
+                            statement2.setLong(1, startTimeStamp);
+                            statement2.setLong(2, endTimeStamp);
+                            rs = statement2.executeQuery();
+                            if (!rs.next()) {
+                                modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                        tablePrefix + APIUsageStatisticsClientConstants.HOURS_TABLE);
+                                statement3 = connection.prepareStatement(modifiedQuery);
+                                statement3.setLong(1, startTimeStamp);
+                                statement3.setLong(2, endTimeStamp);
+                                rs = statement3.executeQuery();
+                                if (!rs.next()) {
+                                    rs = null;
+                                }
+                            }
+                        }
+                    } else if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS) > 0) {
+                        //start checking from the days table down
+                        modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                tablePrefix + APIUsageStatisticsClientConstants.DAYS_TABLE);
+                        statement1 = connection.prepareStatement(modifiedQuery);
+                        statement1.setLong(1, startTimeStamp);
+                        statement1.setLong(2, endTimeStamp);
+                        rs = statement1.executeQuery();
+                        if (!rs.next()) {
+                            modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                    tablePrefix + APIUsageStatisticsClientConstants.HOURS_TABLE);
+                            statement2 = connection.prepareStatement(modifiedQuery);
+                            statement2.setLong(1, startTimeStamp);
+                            statement2.setLong(2, endTimeStamp);
+                            rs = statement2.executeQuery();
+                            if (!rs.next()) {
+                                modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                        tablePrefix + APIUsageStatisticsClientConstants.MINUTES_TABLE);
+                                statement3 = connection.prepareStatement(modifiedQuery);
+                                statement3.setLong(1, startTimeStamp);
+                                statement3.setLong(2, endTimeStamp);
+                                rs = statement3.executeQuery();
+                                if (!rs.next()) {
+                                    rs = null;
+                                }
+                            }
+                        }
+                    } else if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_DAYS) > 0) {
+                        //start checking from the hours table down
+                        modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                tablePrefix + APIUsageStatisticsClientConstants.HOURS_TABLE);
+                        statement1 = connection.prepareStatement(modifiedQuery);
+                        statement1.setLong(1, startTimeStamp);
+                        statement1.setLong(2, endTimeStamp);
+                        rs = statement1.executeQuery();
+                        if (!rs.next()) {
+                            modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                    tablePrefix + APIUsageStatisticsClientConstants.MINUTES_TABLE);
+                            statement2 = connection.prepareStatement(modifiedQuery);
+                            statement2.setLong(1, startTimeStamp);
+                            statement2.setLong(2, endTimeStamp);
+                            rs = statement2.executeQuery();
+                            if (!rs.next()) {
+                                modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                        tablePrefix + APIUsageStatisticsClientConstants.SECONDS_TABLE);
+                                statement3 = connection.prepareStatement(modifiedQuery);
+                                statement3.setLong(1, startTimeStamp);
+                                statement3.setLong(2, endTimeStamp);
+                                rs = statement3.executeQuery();
+                                if (!rs.next()) {
+                                    rs = null;
+                                }
+                            }
+                        }
+                    }
+
+                }
+                if (rs != null) {
+                    do {
+                        String apiName = rs.getString(APIUsageStatisticsClientConstants.API_NAME);
+                        String context = rs.getString(APIUsageStatisticsClientConstants.API_CONTEXT);
+                        String version = rs.getString(APIUsageStatisticsClientConstants.THE_API_VERSION);
+                        long requestCount = rs.getLong("aggregateSum");
+                        usageDataList.add(new APIUsage(apiName, context, version, requestCount));
+                    } while (rs.next());
                 }
             }
+        } catch (ParseException e) {
+            handleException("Error occurred while parsing dates", e);
         } catch (SQLException e) {
             handleException("Error occurred while querying API usage data from JDBC database", e);
         } finally {
-            closeDatabaseLinks(resultSet, statement, connection);
+            closeDatabaseLinks(rs, statement1, connection);
+            closeDatabaseLinks(null, statement2, null);
+            closeDatabaseLinks(null, statement3, null);
         }
         return usageDataList;
     }
