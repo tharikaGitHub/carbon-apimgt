@@ -3100,83 +3100,236 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
             throws APIMgtUsageQueryServiceClientException {
 
         if (dataSource == null) {
-            handleException("BAM data source hasn't been initialized. Ensure that the data source " +
-                    "is properly configured in the APIUsageTracker configuration.");
+            handleException("BAM data source hasn't been initialized. Ensure that the data source "
+                    + "is properly configured in the APIUsageTracker configuration.");
         }
         Connection connection = null;
-        PreparedStatement preparedStatement = null;
+        PreparedStatement statement1 = null;
+        PreparedStatement statement2 = null;
+        PreparedStatement statement3 = null;
         ResultSet rs = null;
+        String modifiedQuery;
         try {
             connection = dataSource.getConnection();
             String query, groupByStmt;
             List<APIThrottlingOverTimeDTO> throttlingData = new ArrayList<APIThrottlingOverTimeDTO>();
             String tenantDomain = MultitenantUtils.getTenantDomain(provider);
+            String tablePrefix = APIUsageStatisticsClientConstants.THROTTLED_OUT_AGGREGATION;
+            //check whether table aggregation exist first
+            if (isTableAggregationExist(tablePrefix, connection)) { //Table exists
 
-            //check whether table exist first
-            if (isTableExist(APIUsageStatisticsClientConstants.API_THROTTLED_OUT_SUMMARY, connection)) { //Table exists
+                DateFormat dateFormat = new SimpleDateFormat(APIUsageStatisticsClientConstants.TIMESTAMP_PATTERN);
+                Date startDate = dateFormat.parse(fromDate);
+                Date endDate = dateFormat.parse(toDate);
+                long startTimeStamp = startDate.getTime();
+                long endTimeStamp = endDate.getTime();
 
-                groupByStmt =
-                        APIUsageStatisticsClientConstants.YEAR + ',' + APIUsageStatisticsClientConstants.MONTH + ','
-                                + APIUsageStatisticsClientConstants.DAY;
-                query = "SELECT " + groupByStmt + " ," +
-                        "SUM(COALESCE(" + APIUsageStatisticsClientConstants.SUCCESS_REQUEST_COUNT
-                        + ",0)) AS success_request_count, " +
-                        "SUM(COALESCE(" + APIUsageStatisticsClientConstants.THROTTLED_OUT_COUNT
-                        + ",0)) AS throttleout_count " +
-                        "FROM " + APIUsageStatisticsClientConstants.API_THROTTLED_OUT_SUMMARY +
-                        " WHERE " + APIUsageStatisticsClientConstants.TENANT_DOMAIN + " = ? " +
-                        "AND " + APIUsageStatisticsClientConstants.API + " = ? " +
-                        (provider.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS) ?
-                                "" :
-                                "AND " + APIUsageStatisticsClientConstants.API_PUBLISHER + " = ?") +
-                        (StringUtils.isEmpty(appName) ?
-                                "" :
-                                " AND " + APIUsageStatisticsClientConstants.APPLICATION_NAME + " = ?") +
-                        " AND " + APIUsageStatisticsClientConstants.TIME + " BETWEEN ? AND ? " +
-                        "GROUP BY " + groupByStmt +
-                        " ORDER BY " + groupByStmt + " ASC";
+                Map<String, Integer> durationBreakdown = this.getDurationBreakdown(startTimeStamp, endTimeStamp);
 
-                preparedStatement = connection.prepareStatement(query);
+                groupByStmt = APIUsageStatisticsClientConstants.TIME_STAMP;
+                query = "SELECT " + groupByStmt + " ," + "SUM(COALESCE("
+                        + APIUsageStatisticsClientConstants.THE_THROTTLED_OUT_COUNT + ",0)) AS "
+                        + APIUsageStatisticsClientConstants.TOTAL_COUNT + "FROM tableNamePlaceholder WHERE "
+                        + APIUsageStatisticsClientConstants.API_CREATOR_TENANT_DOMAIN + " = ? " + "AND "
+                        + APIUsageStatisticsClientConstants.THE_API + " = ? " + (provider
+                        .startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS) ?
+                        "" :
+                        "AND " + APIUsageStatisticsClientConstants.API_CREATOR + " = ?") + (StringUtils
+                        .isEmpty(appName) ?
+                        "" :
+                        " AND " + APIUsageStatisticsClientConstants.THE_APPLICATION_NAME + " = ?") + " AND "
+                        + APIUsageStatisticsClientConstants.TIME_STAMP + " BETWEEN ? AND ? " + "GROUP BY " + groupByStmt
+                        + " ORDER BY " + groupByStmt + " ASC";
+
                 int index = 1;
-                preparedStatement.setString(index++, tenantDomain);
-                preparedStatement.setString(index++, apiName);
-                if (!provider.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS)) {
-                    preparedStatement.setString(index++, provider);
-                }
-                if (!StringUtils.isEmpty(appName)) {
-                    preparedStatement.setString(index++, appName);
-                }
-                preparedStatement.setString(index++, fromDate);
-                preparedStatement.setString(index, toDate);
-
-                rs = preparedStatement.executeQuery();
-                while (rs.next()) {
-                    int successRequestCount = rs.getInt(APIUsageStatisticsClientConstants.SUCCESS_REQUEST_COUNT);
-                    int throttledOutCount = rs.getInt(APIUsageStatisticsClientConstants.THROTTLED_OUT_COUNT);
-                    int year = rs.getInt(APIUsageStatisticsClientConstants.YEAR);
-                    int month = rs.getInt(APIUsageStatisticsClientConstants.MONTH);
-                    String time;
-                    if (APIUsageStatisticsClientConstants.GROUP_BY_HOUR.equals(groupBy)) {
-                        time = rs.getString(APIUsageStatisticsClientConstants.TIME);
-                    } else {
-                        int day = rs.getInt(APIUsageStatisticsClientConstants.DAY);
-                        time = year + "-" + month + "-" + day + " 00:00:00";
+                if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_YEARS) > 0) {
+                    //start checking from the month table down
+                    modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                            tablePrefix + APIUsageStatisticsClientConstants.MONTHS_TABLE);
+                    statement1 = connection.prepareStatement(modifiedQuery);
+                    statement1.setString(index++, tenantDomain);
+                    statement1.setString(index++, apiName);
+                    if (!provider.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS)) {
+                        statement1.setString(index++, provider);
                     }
-                    throttlingData
-                            .add(new APIThrottlingOverTimeDTO(apiName, provider, successRequestCount, throttledOutCount,
-                                    time));
+                    if (!StringUtils.isEmpty(appName)) {
+                        statement1.setString(index++, appName);
+                    }
+                    statement1.setLong(index++, startTimeStamp);
+                    statement1.setLong(index, endTimeStamp);
+                    rs = statement1.executeQuery();
+                    index = 1;
+                    if (!rs.next()) { //check in the Days table
+                        modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                tablePrefix + APIUsageStatisticsClientConstants.DAYS_TABLE);
+                        statement2 = connection.prepareStatement(modifiedQuery);
+                        statement2.setString(index++, tenantDomain);
+                        statement2.setString(index++, apiName);
+                        if (!provider.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS)) {
+                            statement2.setString(index++, provider);
+                        }
+                        if (!StringUtils.isEmpty(appName)) {
+                            statement2.setString(index++, appName);
+                        }
+                        statement2.setLong(index++, startTimeStamp);
+                        statement2.setLong(index, endTimeStamp);
+                        rs = statement2.executeQuery();
+                        index = 1;
+                        if (!rs.next()) {
+                            modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                    tablePrefix + APIUsageStatisticsClientConstants.HOURS_TABLE);
+                            statement3 = connection.prepareStatement(modifiedQuery);
+                            statement3.setString(index++, tenantDomain);
+                            statement3.setString(index++, apiName);
+                            if (!provider.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS)) {
+                                statement3.setString(index++, provider);
+                            }
+                            if (!StringUtils.isEmpty(appName)) {
+                                statement3.setString(index++, appName);
+                            }
+                            statement3.setLong(index++, startTimeStamp);
+                            statement3.setLong(index, endTimeStamp);
+                            rs = statement3.executeQuery();
+                            if (!rs.next()) {
+                                rs = null;
+                            }
+                        }
+                    }
+                } else if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_MONTHS) > 0) {
+                    //start checking from the days table down
+                    modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                            tablePrefix + APIUsageStatisticsClientConstants.DAYS_TABLE);
+                    statement1 = connection.prepareStatement(modifiedQuery);
+                    statement1.setString(index++, tenantDomain);
+                    statement1.setString(index++, apiName);
+                    if (!provider.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS)) {
+                        statement1.setString(index++, provider);
+                    }
+                    if (!StringUtils.isEmpty(appName)) {
+                        statement1.setString(index++, appName);
+                    }
+                    statement1.setLong(index++, startTimeStamp);
+                    statement1.setLong(index, endTimeStamp);
+                    rs = statement1.executeQuery();
+                    index = 1;
+                    if (!rs.next()) {
+                        modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                tablePrefix + APIUsageStatisticsClientConstants.HOURS_TABLE);
+                        statement2 = connection.prepareStatement(modifiedQuery);
+                        statement2.setString(index++, tenantDomain);
+                        statement2.setString(index++, apiName);
+                        if (!provider.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS)) {
+                            statement2.setString(index++, provider);
+                        }
+                        if (!StringUtils.isEmpty(appName)) {
+                            statement2.setString(index++, appName);
+                        }
+                        statement2.setLong(index++, startTimeStamp);
+                        statement2.setLong(index, endTimeStamp);
+                        rs = statement2.executeQuery();
+                        index = 1;
+                        if (!rs.next()) {
+                            modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                    tablePrefix + APIUsageStatisticsClientConstants.MINUTES_TABLE);
+                            statement3 = connection.prepareStatement(modifiedQuery);
+                            statement3.setString(index++, tenantDomain);
+                            statement3.setString(index++, apiName);
+                            if (!provider.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS)) {
+                                statement3.setString(index++, provider);
+                            }
+                            if (!StringUtils.isEmpty(appName)) {
+                                statement3.setString(index++, appName);
+                            }
+                            statement3.setLong(index++, startTimeStamp);
+                            statement3.setLong(index, endTimeStamp);
+                            rs = statement3.executeQuery();
+                            if (!rs.next()) {
+                                rs = null;
+                            }
+                        }
+                    }
+                } else if (durationBreakdown.get(APIUsageStatisticsClientConstants.DURATION_DAYS) > 0) {
+                    //start checking from the hours table down
+                    modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                            tablePrefix + APIUsageStatisticsClientConstants.HOURS_TABLE);
+                    statement1 = connection.prepareStatement(modifiedQuery);
+                    statement1.setString(index++, tenantDomain);
+                    statement1.setString(index++, apiName);
+                    if (!provider.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS)) {
+                        statement1.setString(index++, provider);
+                    }
+                    if (!StringUtils.isEmpty(appName)) {
+                        statement1.setString(index++, appName);
+                    }
+                    statement1.setLong(index++, startTimeStamp);
+                    statement1.setLong(index, endTimeStamp);
+                    rs = statement1.executeQuery();
+                    index = 1;
+                    if (!rs.next()) {
+                        modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                tablePrefix + APIUsageStatisticsClientConstants.MINUTES_TABLE);
+                        statement2 = connection.prepareStatement(modifiedQuery);
+                        statement2.setString(index++, tenantDomain);
+                        statement2.setString(index++, apiName);
+                        if (!provider.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS)) {
+                            statement2.setString(index++, provider);
+                        }
+                        if (!StringUtils.isEmpty(appName)) {
+                            statement2.setString(index++, appName);
+                        }
+                        statement2.setLong(index++, startTimeStamp);
+                        statement2.setLong(index, endTimeStamp);
+                        rs = statement2.executeQuery();
+                        index = 1;
+                        if (!rs.next()) {
+                            modifiedQuery = query.replace(TABLE_NAME_PLACEHOLDER,
+                                    tablePrefix + APIUsageStatisticsClientConstants.SECONDS_TABLE);
+                            statement3 = connection.prepareStatement(modifiedQuery);
+                            statement3.setString(index++, tenantDomain);
+                            statement3.setString(index++, apiName);
+                            if (!provider.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS)) {
+                                statement3.setString(index++, provider);
+                            }
+                            if (!StringUtils.isEmpty(appName)) {
+                                statement3.setString(index++, appName);
+                            }
+                            statement3.setLong(index++, startTimeStamp);
+                            statement3.setLong(index, endTimeStamp);
+                            rs = statement3.executeQuery();
+                            if (!rs.next()) {
+                                rs = null;
+                            }
+                        }
+                    }
+                }
+
+                Date date;
+                if (rs != null) {
+                    do {
+                        int throttledOutCount = rs.getInt(APIUsageStatisticsClientConstants.TOTAL_COUNT);
+                        long aggregatedTime = rs.getLong(APIUsageStatisticsClientConstants.TIME_STAMP);
+                        date = new Date(aggregatedTime);
+                        String time = dateFormat.format(date);
+                        throttlingData.add(new APIThrottlingOverTimeDTO(apiName, provider, 0, throttledOutCount, time));
+                    } while (rs.next());
                 }
 
             } else {
-                handleException("Statistics Table:" + APIUsageStatisticsClientConstants.API_THROTTLED_OUT_SUMMARY +
-                        " does not exist.");
+                handleException(
+                        "Statistics Table Aggregation :" + APIUsageStatisticsClientConstants.THROTTLED_OUT_AGGREGATION
+                                + " does not exist.");
             }
             return throttlingData;
+        } catch (ParseException e) {
+            log.error("Error occurred while parsing date", e);
+            throw new APIMgtUsageQueryServiceClientException("Error occurred while parsing date", e);
         } catch (SQLException e) {
             log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
             throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
         } finally {
-            closeDatabaseLinks(rs, preparedStatement, connection);
+            closeDatabaseLinks(rs, statement1, connection);
+            closeDatabaseLinks(null, statement2, null);
+            closeDatabaseLinks(null, statement3, null);
         }
     }
 
@@ -3270,8 +3423,8 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
     public List<String> getAPIsForThrottleStats(String provider) throws APIMgtUsageQueryServiceClientException {
 
         if (dataSource == null) {
-            handleException("BAM data source hasn't been initialized. Ensure that the data source " +
-                    "is properly configured in the APIUsageTracker configuration.");
+            handleException("BAM data source hasn't been initialized. Ensure that the data source "
+                    + "is properly configured in the APIUsageTracker configuration.");
         }
         Connection connection = null;
         PreparedStatement preparedStatement = null;
@@ -3282,16 +3435,18 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
             List<String> throttlingAPIData = new ArrayList<String>();
             String tenantDomain = MultitenantUtils.getTenantDomain(provider);
 
-            //check whether table exist first
-            if (isTableExist(APIUsageStatisticsClientConstants.API_THROTTLED_OUT_SUMMARY, connection)) { //Tables exist
+            //check whether table aggregation exist first
+            if (isTableAggregationExist(APIUsageStatisticsClientConstants.THROTTLED_OUT_AGGREGATION,
+                    connection)) { //Tables exist
 
-                query = "SELECT DISTINCT " + APIUsageStatisticsClientConstants.API + " FROM "
-                        + APIUsageStatisticsClientConstants.API_THROTTLED_OUT_SUMMARY +
-                        " WHERE " + APIUsageStatisticsClientConstants.TENANT_DOMAIN + " = ? " +
-                        (provider.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS) ?
-                                "" :
-                                "AND " + APIUsageStatisticsClientConstants.API_PUBLISHER + " = ? ") +
-                        "ORDER BY " + APIUsageStatisticsClientConstants.API + " ASC";
+                query = "SELECT DISTINCT " + APIUsageStatisticsClientConstants.THE_API + " FROM "
+                        + APIUsageStatisticsClientConstants.THROTTLED_OUT_AGGREGATION
+                        + APIUsageStatisticsClientConstants.SECONDS_TABLE + " WHERE "
+                        + APIUsageStatisticsClientConstants.API_CREATOR_TENANT_DOMAIN + " = ? " + (provider
+                        .startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS) ?
+                        "" :
+                        "AND " + APIUsageStatisticsClientConstants.API_CREATOR + " = ? ") + "ORDER BY "
+                        + APIUsageStatisticsClientConstants.THE_API + " ASC";
                 preparedStatement = connection.prepareStatement(query);
                 preparedStatement.setString(1, tenantDomain);
                 if (!provider.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS)) {
@@ -3301,12 +3456,12 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
 
                 rs = preparedStatement.executeQuery();
                 while (rs.next()) {
-                    String api = rs.getString(APIUsageStatisticsClientConstants.API);
+                    String api = rs.getString(APIUsageStatisticsClientConstants.THE_API);
                     throttlingAPIData.add(api);
                 }
             } else {
-                handleException("Statistics Table:" + APIUsageStatisticsClientConstants.API_THROTTLED_OUT_SUMMARY +
-                        " does not exist.");
+                handleException("Statistics Table :" + APIUsageStatisticsClientConstants.THROTTLED_OUT_AGGREGATION
+                        + APIUsageStatisticsClientConstants.SECONDS_TABLE + " does not exist.");
             }
             return throttlingAPIData;
         } catch (SQLException e) {
@@ -3331,8 +3486,8 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
             throws APIMgtUsageQueryServiceClientException {
 
         if (dataSource == null) {
-            handleException("BAM data source hasn't been initialized. Ensure that the data source " +
-                    "is properly configured in the APIUsageTracker configuration.");
+            handleException("BAM data source hasn't been initialized. Ensure that the data source "
+                    + "is properly configured in the APIUsageTracker configuration.");
         }
 
         Connection connection = null;
@@ -3343,16 +3498,19 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
             String query;
             List<String> throttlingAppData = new ArrayList<String>();
             String tenantDomain = MultitenantUtils.getTenantDomain(provider);
-            //check whether table exist first
-            if (isTableExist(APIUsageStatisticsClientConstants.API_THROTTLED_OUT_SUMMARY, connection)) { //Tables exist
-                query = "SELECT DISTINCT " + APIUsageStatisticsClientConstants.APPLICATION_NAME + " FROM "
-                        + APIUsageStatisticsClientConstants.API_THROTTLED_OUT_SUMMARY +
-                        " WHERE " + APIUsageStatisticsClientConstants.TENANT_DOMAIN + " = ? " +
-                        (provider.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS) ?
-                                "" :
-                                "AND " + APIUsageStatisticsClientConstants.API_PUBLISHER + " = ? ") +
-                        (apiName == null ? "" : "AND " + APIUsageStatisticsClientConstants.API + " = ? ") +
-                        "ORDER BY " + APIUsageStatisticsClientConstants.APPLICATION_NAME + " ASC";
+            //check whether table aggregation exist first
+            if (isTableAggregationExist(APIUsageStatisticsClientConstants.THROTTLED_OUT_AGGREGATION,
+                    connection)) { //Tables exist
+                query = "SELECT DISTINCT " + APIUsageStatisticsClientConstants.THE_APPLICATION_NAME + " FROM "
+                        + APIUsageStatisticsClientConstants.THROTTLED_OUT_AGGREGATION
+                        + APIUsageStatisticsClientConstants.SECONDS_TABLE + " WHERE "
+                        + APIUsageStatisticsClientConstants.API_CREATOR_TENANT_DOMAIN + " = ? " + (provider
+                        .startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS) ?
+                        "" :
+                        "AND " + APIUsageStatisticsClientConstants.API_CREATOR + " = ? ") + (apiName == null ?
+                        "" :
+                        "AND " + APIUsageStatisticsClientConstants.THE_API + " = ? ") + "ORDER BY "
+                        + APIUsageStatisticsClientConstants.THE_APPLICATION_NAME + " ASC";
 
                 preparedStatement = connection.prepareStatement(query);
                 int index = 1;
@@ -3366,12 +3524,13 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
                 }
                 rs = preparedStatement.executeQuery();
                 while (rs.next()) {
-                    String applicationName = rs.getString(APIUsageStatisticsClientConstants.APPLICATION_NAME);
+                    String applicationName = rs.getString(APIUsageStatisticsClientConstants.THE_APPLICATION_NAME);
                     throttlingAppData.add(applicationName);
                 }
             } else {
-                handleException("Statistics Table:" + APIUsageStatisticsClientConstants.API_THROTTLED_OUT_SUMMARY +
-                        " does not exist.");
+                handleException(
+                        "Statistics Table Aggregation:" + APIUsageStatisticsClientConstants.THROTTLED_OUT_AGGREGATION
+                                + " does not exist.");
             }
             return throttlingAppData;
         } catch (SQLException e) {

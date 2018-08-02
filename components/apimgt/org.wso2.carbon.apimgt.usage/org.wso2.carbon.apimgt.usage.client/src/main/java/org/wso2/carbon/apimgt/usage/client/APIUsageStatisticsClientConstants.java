@@ -202,6 +202,8 @@ public final class APIUsageStatisticsClientConstants {
 
     public static final String API_USAGE_PER_VERSION_AGGREGATION = "ApiUsagePerVersionAggregation";
 
+    public static final String THROTTLED_OUT_AGGREGATION = "ThrottledOutAggregation";
+
     public static final String API_NAME = "apiName"; //previously api
 
     public static final String THE_API_VERSION = "apiVersion"; //version
@@ -218,17 +220,27 @@ public final class APIUsageStatisticsClientConstants {
 
     public static final String TOTAL_COUNT_OF_REQUESTS = "TOTAL_COUNT_OF_REQUESTS";
 
+    public static final String API_CREATOR_TENANT_DOMAIN = "apiCreatorTenantDomain";
+
     public static final String TIME_STAMP= "AGG_TIMESTAMP"; //time
 
     public static final String REQUEST_TIME_STAMP= "requestTimestamp";
 
     public static final String USER_NAME = "username";
 
+    public static final String THE_API = "api";
+
     public static final String THE_MAX_REQUEST_TIME = "AGG_MAX_requestTimestamp";
+
+    public static final String THE_THROTTLED_OUT_COUNT = "AGG_COUNT";
 
     public static final String USER_TENANT_DOMAIN = "userTenantDomain";
 
     public static final String API_RESOURCE_TEMPLATE = "apiResourceTemplate";
+
+    public static final String THE_APPLICATION_NAME = "applicationName";
+
+    public static final String TOTAL_COUNT = "total_count";
 
     public static final String TIMESTAMP_PATTERN = "yyyy-MM-dd HH:mm:ss";
 
