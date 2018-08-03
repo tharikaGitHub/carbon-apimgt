@@ -1579,7 +1579,7 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
             String toDate, int limit) throws APIMgtUsageQueryServiceClientException {
 
         Collection<APIAccessTime> accessTimes = getLastAccessData(
-                APIUsageStatisticsClientConstants.API_LAST_ACCESS_AGGREGATION + APIUsageStatisticsClientConstants.MINUTES_TABLE, providerName);
+                APIUsageStatisticsClientConstants.API_LAST_ACCESS_SUMMARY, providerName);
         if (providerName.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS)) {
             providerName = APIUsageStatisticsClientConstants.ALL_PROVIDERS;
         }
@@ -1624,18 +1624,18 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
             connection = dataSource.getConnection();
 
             StringBuilder lastAccessQuery = new StringBuilder(
-                    "SELECT " + APIUsageStatisticsClientConstants.API_NAME + "," + APIUsageStatisticsClientConstants.THE_API_VERSION
-                            + "," + APIUsageStatisticsClientConstants.API_CONTEXT + ","
-                            + APIUsageStatisticsClientConstants.USER_NAME + ","
-                            + APIUsageStatisticsClientConstants.THE_MAX_REQUEST_TIME + " FROM " + tableName);
+                    "SELECT " + APIUsageStatisticsClientConstants.API_NAME + ","
+                            + APIUsageStatisticsClientConstants.THE_API_VERSION + ","
+                            + APIUsageStatisticsClientConstants.API_CONTEXT + ","
+                            + APIUsageStatisticsClientConstants.APP_OWNER + ","
+                            + APIUsageStatisticsClientConstants.THE_LAST_ACCESS_TIME + " FROM " + tableName);
 
-            lastAccessQuery.append(" where " + APIUsageStatisticsClientConstants.USER_TENANT_DOMAIN + "= ?");
+            lastAccessQuery.append(" where " + APIUsageStatisticsClientConstants.APP_USER_TENANT_DOMAIN + "= ?");
             if (!providerName.startsWith(APIUsageStatisticsClientConstants.ALL_PROVIDERS)) {
-                lastAccessQuery
-                        .append(" AND (" + APIUsageStatisticsClientConstants.API_CREATOR + "= ? OR "
-                                + APIUsageStatisticsClientConstants.API_CREATOR + "= ?)");
+                lastAccessQuery.append(" AND (" + APIUsageStatisticsClientConstants.API_CREATOR + "= ? OR "
+                        + APIUsageStatisticsClientConstants.API_CREATOR + "= ?)");
             }
-            lastAccessQuery.append(" order by " + APIUsageStatisticsClientConstants.THE_MAX_REQUEST_TIME + " DESC");
+            lastAccessQuery.append(" order by " + APIUsageStatisticsClientConstants.THE_LAST_ACCESS_TIME + " DESC");
 
             statement = connection.prepareStatement(lastAccessQuery.toString());
             statement.setString(1, tenantDomain);
@@ -1648,8 +1648,8 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
                 String apiName = rs.getString(APIUsageStatisticsClientConstants.API_NAME);
                 String version = rs.getString(APIUsageStatisticsClientConstants.THE_API_VERSION);
                 String context = rs.getString(APIUsageStatisticsClientConstants.API_CONTEXT);
-                long accessTime = rs.getLong(APIUsageStatisticsClientConstants.THE_MAX_REQUEST_TIME);
-                String username = rs.getString(APIUsageStatisticsClientConstants.USER_NAME);
+                long accessTime = rs.getLong(APIUsageStatisticsClientConstants.THE_LAST_ACCESS_TIME);
+                String username = rs.getString(APIUsageStatisticsClientConstants.APP_OWNER);
                 lastAccessTimeData.add(new APIAccessTime(apiName, version, context, accessTime, username));
             }
         } catch (SQLException e) {
@@ -2988,19 +2988,19 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
             statement = connection.createStatement();
             String query;
             if (connection.getMetaData().getDatabaseProductName().equalsIgnoreCase("oracle")) {
-                query = "SELECT " + APIUsageStatisticsClientConstants.REQUEST_TIME_STAMP + " FROM (SELECT "
-                        + APIUsageStatisticsClientConstants.REQUEST_TIME_STAMP + " FROM " + columnFamily + " order by "
-                        + APIUsageStatisticsClientConstants.REQUEST_TIME_STAMP + " ASC) where ROWNUM <= 1";
+                query = "SELECT " + APIUsageStatisticsClientConstants.TIME_STAMP + " FROM (SELECT "
+                        + APIUsageStatisticsClientConstants.TIME_STAMP + " FROM " + columnFamily + " order by "
+                        + APIUsageStatisticsClientConstants.TIME_STAMP + " ASC) where ROWNUM <= 1";
             } else if (connection.getMetaData().getDatabaseProductName().contains("Microsoft")) {
-                query = "SELECT TOP 1 " + APIUsageStatisticsClientConstants.REQUEST_TIME_STAMP + " FROM " + columnFamily
-                        + " order by " + APIUsageStatisticsClientConstants.REQUEST_TIME_STAMP + " ASC";
+                query = "SELECT TOP 1 " + APIUsageStatisticsClientConstants.TIME_STAMP + " FROM " + columnFamily
+                        + " order by " + APIUsageStatisticsClientConstants.TIME_STAMP + " ASC";
             } else if (connection.getMetaData().getDatabaseProductName().contains("DB2")) {
-                query = "SELECT " + APIUsageStatisticsClientConstants.REQUEST_TIME_STAMP + " FROM " + columnFamily
-                        + " order by " + APIUsageStatisticsClientConstants.REQUEST_TIME_STAMP
+                query = "SELECT " + APIUsageStatisticsClientConstants.TIME_STAMP + " FROM " + columnFamily
+                        + " order by " + APIUsageStatisticsClientConstants.TIME_STAMP
                         + " ASC FETCH FIRST 1 ROWS ONLY";
             } else {
-                query = "SELECT " + APIUsageStatisticsClientConstants.REQUEST_TIME_STAMP + " FROM  " + columnFamily
-                        + " order by " + APIUsageStatisticsClientConstants.REQUEST_TIME_STAMP + " ASC limit 1";
+                query = "SELECT " + APIUsageStatisticsClientConstants.TIME_STAMP + " FROM  " + columnFamily
+                        + " order by " + APIUsageStatisticsClientConstants.TIME_STAMP + " ASC limit 1";
             }
             rs = statement.executeQuery(query);
             String year;
@@ -3011,7 +3011,7 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
             Calendar cal;
             APIFirstAccess firstAccess = null;
             while (rs.next()) {
-                timeStamp = rs.getString(APIUsageStatisticsClientConstants.REQUEST_TIME_STAMP);
+                timeStamp = rs.getString(APIUsageStatisticsClientConstants.TIME_STAMP);
                 date = new Date(Long.parseLong(timeStamp));
                 cal = Calendar.getInstance();
                 cal.setTime(date);

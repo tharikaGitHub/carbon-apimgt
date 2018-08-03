@@ -192,15 +192,15 @@ public final class APIUsageStatisticsClientConstants {
 
     //------------------------------------------------------------------------------------
 
-    public static final String API_USAGE_PER_DESTINATION_AGGREGATION = "ApiUsagePerDestinationAggregation";
+    public static final String API_USAGE_PER_DESTINATION_AGGREGATION = "ApiPerDestinationAgg";
 
-    public static final String API_USAGE_AGGREGATION = "ApiUsageAggregation";
+    public static final String API_USAGE_AGGREGATION = "ApiUserPerAppAgg";
 
-    public static final String API_USAGE_PER_RESOURCE_PATH_AGGREGATION = "ApiUsagePerResourcePathAggregation";
+    public static final String API_USAGE_PER_RESOURCE_PATH_AGGREGATION = "ApiResourcePathPerAppAgg";
 
-    public static final String API_LAST_ACCESS_AGGREGATION = "ApiLastAccessAggregation";
+    public static final String API_LAST_ACCESS_SUMMARY = "ApiLastAccessSummary";
 
-    public static final String API_USAGE_PER_VERSION_AGGREGATION = "ApiUsagePerVersionAggregation";
+    public static final String API_USAGE_PER_VERSION_AGGREGATION = "ApiVersionPerAppAgg";
 
     public static final String API_NAME = "apiName"; //previously api
 
@@ -224,9 +224,13 @@ public final class APIUsageStatisticsClientConstants {
 
     public static final String USER_NAME = "username";
 
-    public static final String THE_MAX_REQUEST_TIME = "AGG_MAX_requestTimestamp";
+    public static final String APP_OWNER = "applicationOwner";
+
+    public static final String THE_LAST_ACCESS_TIME = "lastAccessTime";
 
     public static final String USER_TENANT_DOMAIN = "userTenantDomain";
+
+    public static final String APP_USER_TENANT_DOMAIN = "tenantDomain";
 
     public static final String API_RESOURCE_TEMPLATE = "apiResourceTemplate";
 
