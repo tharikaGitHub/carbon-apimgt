@@ -21,7 +21,7 @@ import org.junit.Assert;
 import org.apache.log4j.Logger;
 import org.junit.Before;
 import org.junit.Test;
-import org.wso2.siddhi.core.ExecutionPlanRuntime;
+import org.wso2.siddhi.core.SiddhiAppRuntime;
 import org.wso2.siddhi.core.SiddhiManager;
 import org.wso2.siddhi.core.event.Event;
 import org.wso2.siddhi.core.query.output.callback.QueryCallback;
@@ -58,7 +58,7 @@ public class ThrottleTimeBatchWindowTestCase {
                 "select symbol,sum(price) as sumPrice,volume, expiryTimeStamp " +
                 "insert all events into outputStream ;";
 
-        ExecutionPlanRuntime executionPlanRuntime = siddhiManager.createExecutionPlanRuntime(cseEventStream + query);
+        SiddhiAppRuntime executionPlanRuntime = siddhiManager.createSiddhiAppRuntime(cseEventStream + query);
 
         executionPlanRuntime.addCallback("query1", new QueryCallback() {
             @Override
@@ -105,7 +105,7 @@ public class ThrottleTimeBatchWindowTestCase {
                 "select symbol,sum(price) as sumPrice,volume, expiryTimeStamp " +
                 "insert all events into outputStream ;";
 
-        ExecutionPlanRuntime executionPlanRuntime = siddhiManager.createExecutionPlanRuntime(cseEventStream + query);
+        SiddhiAppRuntime executionPlanRuntime = siddhiManager.createSiddhiAppRuntime(cseEventStream + query);
 
         executionPlanRuntime.addCallback("query1", new QueryCallback() {
             @Override
@@ -148,7 +148,7 @@ public class ThrottleTimeBatchWindowTestCase {
                        "select symbol,sum(price) as sumPrice,volume, expiryTimeStamp " +
                        "insert all events into outputStream ;";
 
-        ExecutionPlanRuntime executionPlanRuntime = siddhiManager.createExecutionPlanRuntime(cseEventStream + query);
+        SiddhiAppRuntime executionPlanRuntime = siddhiManager.createSiddhiAppRuntime(cseEventStream + query);
 
         executionPlanRuntime.addCallback("query1", new QueryCallback() {
             @Override

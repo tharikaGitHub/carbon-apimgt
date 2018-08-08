@@ -28,6 +28,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.joda.time.DateTime;
 import org.json.simple.JSONArray;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.APIProvider;
@@ -71,13 +72,18 @@ import org.wso2.carbon.apimgt.usage.client.pojo.APIUsageByDestination;
 import org.wso2.carbon.apimgt.usage.client.pojo.APIUsageByResourcePath;
 import org.wso2.carbon.apimgt.usage.client.pojo.APIUsageByUser;
 import org.wso2.carbon.apimgt.usage.client.pojo.APIUsageByUserName;
-import org.wso2.carbon.apimgt.usage.client.util.APIUsageClientUtil;
 import org.wso2.carbon.apimgt.usage.client.util.RestClientUtil;
 import org.wso2.carbon.application.mgt.stub.upload.CarbonAppUploaderStub;
 import org.wso2.carbon.application.mgt.stub.upload.types.carbon.UploadedFileItem;
 import org.wso2.carbon.utils.CarbonUtils;
 import org.wso2.carbon.utils.multitenancy.MultitenantConstants;
 import org.wso2.carbon.utils.multitenancy.MultitenantUtils;
+import org.wso2.siddhi.core.SiddhiAppRuntime;
+import org.wso2.siddhi.core.SiddhiManager;
+import org.wso2.siddhi.core.event.Event;
+import org.wso2.siddhi.core.stream.input.InputHandler;
+import org.wso2.siddhi.core.util.EventPrinter;
+import java.time.LocalDate;
 
 import javax.activation.DataHandler;
 import javax.naming.Context;
@@ -1779,47 +1785,93 @@ public class APIUsageStatisticsRdbmsClientImpl extends APIUsageStatisticsClient 
                     "is properly configured in the APIUsageTracker configuration.");
         }
 
-        Connection connection = null;
-        PreparedStatement statement = null;
-        ResultSet rs = null;
-        List<APIUsageByDestination> usageByResourcePath = new ArrayList<APIUsageByDestination>();
-        try {
-            connection = dataSource.getConnection();
-            String query =
-                    "SELECT " + APIUsageStatisticsClientConstants.API + ',' + APIUsageStatisticsClientConstants.VERSION
-                            + ',' + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                            + APIUsageStatisticsClientConstants.CONTEXT + ','
-                            + APIUsageStatisticsClientConstants.DESTINATION + ',' + "SUM("
-                            + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + ") as total_request_count"
-                            + " FROM " + tableName + " WHERE " + APIUsageStatisticsClientConstants.TIME
-                            + " BETWEEN ? AND ?" + " GROUP BY " + APIUsageStatisticsClientConstants.API + ','
-                            + APIUsageStatisticsClientConstants.VERSION + ','
-                            + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
-                            + APIUsageStatisticsClientConstants.CONTEXT + ','
-                            + APIUsageStatisticsClientConstants.DESTINATION;
+        SiddhiManager siddhiManager = new SiddhiManager();
 
-            statement = connection.prepareStatement(query);
-            statement.setString(1, fromDate);
-            statement.setString(2, toDate);
-            rs = statement.executeQuery();
-            APIUsageByDestination apiUsageByDestination;
+        String requestStream = "@Store(type=\"rdbms\", jdbc.url=\"jdbc:mysql://localhost:3306/bstatdb?autoReconnect=true\", username=\"root\", password=\"tharika@123\", jdbc.driver.name=\"com.mysql.jdbc.Driver\")"
+                + "define stream Request (meta_clientType string,\n"
+                + "    applicationConsumerKey string, \n" + "    applicationName string,\n"
+                + "    applicationId string,\n" + "    applicationOwner string, \n" + "    apiContext string,\n"
+                + "    apiName string,\n" + "    apiVersion string,\n" + "    apiResourcePath string,\n"
+                + "    apiResourceTemplate string,\n" + "    apiMethod string,\n" + "    apiCreator string,\n"
+                + "    apiCreatorTenantDomain string,\n" + "    apiTier string,\n" + "    apiHostname string, \n"
+                + "    username string,\n" + "    userTenantDomain string,\n" + "    userIp string,\n"
+                + "    userAgent string, \n" + "    requestTimestamp long,\n" + "    throttledOut bool,\n"
+                + "    responseTime long,\n" + "    serviceTime long,\n" + "    backendTime long,\n"
+                + "    responseCacheHit bool,\n" + "    responseSize long,\n" + "    protocol string,\n"
+                + "    responseCode int,\n" + "    destination string,\n" + "    securityLatency long,\n"
+                + "    throttlingLatency long,\n" + "    requestMediationLatency long,\n"
+                + "    responseMediationLatency long,\n" + "    backendLatency long,\n" + "    otherLatency long, \n"
+                + "    gatewayType string,\n" + "    label string);";
 
-            while (rs.next()) {
-                String apiName = rs.getString(APIUsageStatisticsClientConstants.API);
-                String version = rs.getString(APIUsageStatisticsClientConstants.VERSION);
-                String context = rs.getString(APIUsageStatisticsClientConstants.CONTEXT);
-                String destination = rs.getString(APIUsageStatisticsClientConstants.DESTINATION);
-                long requestCount = rs.getLong("total_request_count");
-                apiUsageByDestination = new APIUsageByDestination(apiName, version, context, destination, requestCount);
-                usageByResourcePath.add(apiUsageByDestination);
-            }
-            return usageByResourcePath;
-        } catch (Exception e) {
-            log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
-            throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
-        } finally {
-            closeDatabaseLinks(rs, statement, connection);
+        String query = "define aggregation ApiPerDestinationAgg\n" + "from Request\n"
+                + "select apiName, apiVersion, apiContext, apiCreator, apiCreatorTenantDomain, apiHostname, destination, count() as totalRequestCount, gatewayType, label\n"
+                + "group by apiContext, apiHostname, destination\n"
+                + "aggregate by requestTimestamp every seconds...years;";
+
+        SiddhiAppRuntime siddhiAppRuntime = siddhiManager.createSiddhiAppRuntime(requestStream + query);
+
+        siddhiAppRuntime.start();
+
+        DateTime currentDate = DateTime.now();
+        String year = String.valueOf(currentDate.getYear());
+        String month = String.valueOf(currentDate.getMonthOfYear());
+        if (month.length() == 1) {
+            month = "0".concat(month);
         }
+
+        Event[] events = siddhiAppRuntime.query("from ApiPerDestinationAgg " +
+                "on symbol == \"IBM\" " +
+                "within \"" + year + "-" + month + "-** **:**:** +05:30\" " +
+                "per \"seconds\"; ");
+
+        EventPrinter.print(events);
+
+
+        siddhiAppRuntime.shutdown();
+
+
+//        Connection connection = null;
+//        PreparedStatement statement = null;
+//        ResultSet rs = null;
+//        List<APIUsageByDestination> usageByResourcePath = new ArrayList<APIUsageByDestination>();
+//        try {
+//            connection = dataSource.getConnection();
+//            String query =
+//                    "SELECT " + APIUsageStatisticsClientConstants.API + ',' + APIUsageStatisticsClientConstants.VERSION
+//                            + ',' + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
+//                            + APIUsageStatisticsClientConstants.CONTEXT + ','
+//                            + APIUsageStatisticsClientConstants.DESTINATION + ',' + "SUM("
+//                            + APIUsageStatisticsClientConstants.TOTAL_REQUEST_COUNT + ") as total_request_count"
+//                            + " FROM " + tableName + " WHERE " + APIUsageStatisticsClientConstants.TIME
+//                            + " BETWEEN ? AND ?" + " GROUP BY " + APIUsageStatisticsClientConstants.API + ','
+//                            + APIUsageStatisticsClientConstants.VERSION + ','
+//                            + APIUsageStatisticsClientConstants.API_PUBLISHER + ','
+//                            + APIUsageStatisticsClientConstants.CONTEXT + ','
+//                            + APIUsageStatisticsClientConstants.DESTINATION;
+//
+//            statement = connection.prepareStatement(query);
+//            statement.setString(1, fromDate);
+//            statement.setString(2, toDate);
+//            rs = statement.executeQuery();
+//            APIUsageByDestination apiUsageByDestination;
+//
+//            while (rs.next()) {
+//                String apiName = rs.getString(APIUsageStatisticsClientConstants.API);
+//                String version = rs.getString(APIUsageStatisticsClientConstants.VERSION);
+//                String context = rs.getString(APIUsageStatisticsClientConstants.CONTEXT);
+//                String destination = rs.getString(APIUsageStatisticsClientConstants.DESTINATION);
+//                long requestCount = rs.getLong("total_request_count");
+//                apiUsageByDestination = new APIUsageByDestination(apiName, version, context, destination, requestCount);
+//                usageByResourcePath.add(apiUsageByDestination);
+//            }
+//            return usageByResourcePath;
+//        } catch (Exception e) {
+//            log.error("Error occurred while querying from JDBC database " + e.getMessage(), e);
+//            throw new APIMgtUsageQueryServiceClientException("Error occurred while querying from JDBC database", e);
+//        } finally {
+//            closeDatabaseLinks(rs, statement, connection);
+//        }
+        return null;
     }
 
     /**

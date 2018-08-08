@@ -17,7 +17,11 @@
  */
 package org.wso2.carbon.apimgt.throttling.siddhi.extension;
 
-import org.wso2.siddhi.core.config.ExecutionPlanContext;
+import org.wso2.siddhi.annotation.Example;
+import org.wso2.siddhi.annotation.Extension;
+import org.wso2.siddhi.annotation.Parameter;
+import org.wso2.siddhi.annotation.util.DataType;
+import org.wso2.siddhi.core.config.SiddhiAppContext;
 import org.wso2.siddhi.core.event.ComplexEvent;
 import org.wso2.siddhi.core.event.ComplexEventChunk;
 import org.wso2.siddhi.core.event.state.StateEvent;
@@ -31,26 +35,41 @@ import org.wso2.siddhi.core.query.processor.Processor;
 import org.wso2.siddhi.core.query.processor.SchedulingProcessor;
 import org.wso2.siddhi.core.query.processor.stream.StreamProcessor;
 import org.wso2.siddhi.core.query.processor.stream.window.FindableProcessor;
-import org.wso2.siddhi.core.table.EventTable;
+import org.wso2.siddhi.core.table.Table;
 import org.wso2.siddhi.core.util.Scheduler;
-import org.wso2.siddhi.core.util.collection.operator.Finder;
-import org.wso2.siddhi.core.util.collection.operator.MatchingMetaStateHolder;
+import org.wso2.siddhi.core.util.collection.operator.CompiledCondition;
+import org.wso2.siddhi.core.util.collection.operator.MatchingMetaInfoHolder;
+import org.wso2.siddhi.core.util.collection.operator.Operator;
+import org.wso2.siddhi.core.util.config.ConfigReader;
 import org.wso2.siddhi.core.util.parser.OperatorParser;
 import org.wso2.siddhi.query.api.definition.AbstractDefinition;
 import org.wso2.siddhi.query.api.definition.Attribute;
-import org.wso2.siddhi.query.api.exception.ExecutionPlanValidationException;
+import org.wso2.siddhi.query.api.exception.SiddhiAppValidationException;
 import org.wso2.siddhi.query.api.expression.Expression;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Extension(name = "timeBatch", namespace = "throttler", description =
+        "A batch (tumbling) time window that holds events that arrive during window.time periods, "
+                + "and gets updated for each window.time.", parameters = {
+        @Parameter(name = "window.time", description = "The batch time period for which the window should hold events.",
+                type = { DataType.INT, DataType.LONG, DataType.TIME }),
+        @Parameter(name = "start.time", description = "This specifies an offset in milliseconds in order to start the "
+                + "window at a time different to the standard time.", type = { DataType.INT }) }, examples = {
+        @Example(syntax = "define window cseEventWindow (symbol string, price float, volume int) "
+                + "timeBatch(20) output all events;\n" + "@info(name = 'query0')\n" + "from cseEventStream\n"
+                + "insert into cseEventWindow;\n" + "@info(name = 'query1')\n" + "from cseEventWindow\n"
+                + "select symbol, sum(price) as price\n" + "insert all events into outputStream ;", description =
+                "This will processing events arrived every 20 milliseconds" + " as a batch and out put all events.") })
 public class ThrottleStreamProcessor extends StreamProcessor implements SchedulingProcessor, FindableProcessor {
 
     private long timeInMilliSeconds;
     private ComplexEventChunk<StreamEvent> expiredEventChunk = new ComplexEventChunk<StreamEvent>(true);
     private Scheduler scheduler;
-    private ExecutionPlanContext executionPlanContext;
+    private SiddhiAppContext siddhiExecAppContext;
     private long expireEventTime = -1;
     private long startTime = -1;
 
@@ -66,9 +85,9 @@ public class ThrottleStreamProcessor extends StreamProcessor implements Scheduli
 
     @Override
     protected List<Attribute> init(AbstractDefinition inputDefinition,
-                                   ExpressionExecutor[] attributeExpressionExecutors,
-                                   ExecutionPlanContext executionPlanContext) {
-        this.executionPlanContext = executionPlanContext;
+                                   ExpressionExecutor[] attributeExpressionExecutors, ConfigReader configReader,
+                                   SiddhiAppContext executionPlanContext) {
+        this.siddhiExecAppContext = executionPlanContext;
 
         if (attributeExpressionExecutors.length == 1) {
             if (attributeExpressionExecutors[0] instanceof ConstantExpressionExecutor) {
@@ -78,12 +97,12 @@ public class ThrottleStreamProcessor extends StreamProcessor implements Scheduli
                 } else if (attributeExpressionExecutors[0].getReturnType() == Attribute.Type.LONG) {
                     timeInMilliSeconds = (Long) ((ConstantExpressionExecutor) attributeExpressionExecutors[0]).getValue();
                 } else {
-                    throw new ExecutionPlanValidationException("Throttle batch window's 1st parameter attribute should be " +
+                    throw new SiddhiAppValidationException("Throttle batch window's 1st parameter attribute should be " +
                                                                "either int or long, but found "
                                                                + attributeExpressionExecutors[0].getReturnType());
                 }
             } else {
-                throw new ExecutionPlanValidationException("Throttle batch window 1st parameter needs to be constant " +
+                throw new SiddhiAppValidationException("Throttle batch window 1st parameter needs to be constant " +
                                                            "parameter attribute but found a dynamic attribute "
                                                            + attributeExpressionExecutors[0].getClass().getCanonicalName());
             }
@@ -95,12 +114,12 @@ public class ThrottleStreamProcessor extends StreamProcessor implements Scheduli
                 } else if (attributeExpressionExecutors[0].getReturnType() == Attribute.Type.LONG) {
                     timeInMilliSeconds = (Long) ((ConstantExpressionExecutor) attributeExpressionExecutors[0]).getValue();
                 } else {
-                    throw new ExecutionPlanValidationException("Throttle batch window's 1st parameter attribute should be " +
+                    throw new SiddhiAppValidationException("Throttle batch window's 1st parameter attribute should be " +
                                                                "either int or long, but found "
                                                                + attributeExpressionExecutors[0].getReturnType());
                 }
             } else {
-                throw new ExecutionPlanValidationException("Throttle batch window 1st parameter needs to be constant " +
+                throw new SiddhiAppValidationException("Throttle batch window 1st parameter needs to be constant " +
                                                            "attribute but found a dynamic attribute "
                                                            + attributeExpressionExecutors[0].getClass().getCanonicalName());
             }
@@ -112,11 +131,11 @@ public class ThrottleStreamProcessor extends StreamProcessor implements Scheduli
                 startTime = Long.parseLong(String.valueOf(((ConstantExpressionExecutor)
                                                                    attributeExpressionExecutors[1]).getValue()));
             } else {
-                throw new ExecutionPlanValidationException("Throttle batch window 2nd parameter needs to be a Long " +
+                throw new SiddhiAppValidationException("Throttle batch window 2nd parameter needs to be a Long " +
                                                            "or Int type but found a " + attributeExpressionExecutors[2].getReturnType());
             }
         } else {
-            throw new ExecutionPlanValidationException("Throttle batch window should only have one/two parameter " +
+            throw new SiddhiAppValidationException("Throttle batch window should only have one/two parameter " +
                                                        "(<int|long|time> windowTime (and <int|long> startTime), but found "
                                                        + attributeExpressionExecutors.length + " input attributes");
         }
@@ -132,15 +151,15 @@ public class ThrottleStreamProcessor extends StreamProcessor implements Scheduli
 
         synchronized (this) {
             if (expireEventTime == -1) {
-                long currentTime = executionPlanContext.getTimestampGenerator().currentTime();
+                long currentTime = siddhiExecAppContext.getTimestampGenerator().currentTime();
                 if (startTime != -1) {
                     expireEventTime = addTimeShift(currentTime);
                 } else {
-                    expireEventTime = executionPlanContext.getTimestampGenerator().currentTime() + timeInMilliSeconds;
+                    expireEventTime = siddhiExecAppContext.getTimestampGenerator().currentTime() + timeInMilliSeconds;
                 }
                 scheduler.notifyAt(expireEventTime);
             }
-            long currentTime = executionPlanContext.getTimestampGenerator().currentTime();
+            long currentTime = siddhiExecAppContext.getTimestampGenerator().currentTime();
             boolean sendEvents;
             if (currentTime >= expireEventTime) {
                 expireEventTime += timeInMilliSeconds;
@@ -187,28 +206,30 @@ public class ThrottleStreamProcessor extends StreamProcessor implements Scheduli
         //Do nothing
     }
 
-    @Override
-    public Object[] currentState() {
-        return new Object[]{expiredEventChunk.getFirst()};
+    public Map<String, Object> currentState() {
+        Map<String, Object> map = new HashMap<String, Object>();
+        map.put("0", expiredEventChunk);
+        return map;
     }
 
-    @Override
-    public void restoreState(Object[] state) {
-        expiredEventChunk.clear();
-        expiredEventChunk.add((StreamEvent) state[0]);
+    public void restoreState(Map<String, Object> map) {
+        //Do nothing
     }
 
-    @Override
-    public synchronized StreamEvent find(StateEvent matchingEvent, Finder finder) {
-        return finder.find(matchingEvent, expiredEventChunk, streamEventCloner);
+    public synchronized StreamEvent find(StateEvent stateEvent, CompiledCondition compiledCondition) {
+        if (compiledCondition instanceof Operator) {
+            return ((Operator) compiledCondition).find(stateEvent, this.expiredEventChunk, this.streamEventCloner);
+        } else {
+            return null;
+        }
     }
 
-    @Override
-    public Finder constructFinder(Expression expression, MatchingMetaStateHolder matchingMetaStateHolder,
-            ExecutionPlanContext executionPlanContext, List<VariableExpressionExecutor> variableExpressionExecutors,
-            Map<String, EventTable> eventTableMap) {
-        return OperatorParser.constructOperator(expiredEventChunk, expression, matchingMetaStateHolder,
-                executionPlanContext, variableExpressionExecutors, eventTableMap, queryName);
+    public CompiledCondition compileCondition(Expression expression, MatchingMetaInfoHolder matchingMetaInfoHolder,
+            SiddhiAppContext siddhiAppContext, List<VariableExpressionExecutor> list, Map<String, Table> map,
+            String s) {
+        return OperatorParser
+                .constructOperator(this.expiredEventChunk, expression, matchingMetaInfoHolder, siddhiAppContext, list,
+                        map, this.queryName);
     }
 
     private long addTimeShift(long currentTime) {

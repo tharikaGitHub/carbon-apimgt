@@ -18,7 +18,11 @@
 
 package org.wso2.carbon.apimgt.throttling.siddhi.extension;
 
-import org.wso2.siddhi.core.config.ExecutionPlanContext;
+import org.wso2.siddhi.annotation.Example;
+import org.wso2.siddhi.annotation.Extension;
+import org.wso2.siddhi.annotation.Parameter;
+import org.wso2.siddhi.annotation.util.DataType;
+import org.wso2.siddhi.core.config.SiddhiAppContext;
 import org.wso2.siddhi.core.event.ComplexEventChunk;
 import org.wso2.siddhi.core.event.stream.StreamEvent;
 import org.wso2.siddhi.core.event.stream.StreamEventCloner;
@@ -27,9 +31,10 @@ import org.wso2.siddhi.core.executor.ExpressionExecutor;
 import org.wso2.siddhi.core.executor.VariableExpressionExecutor;
 import org.wso2.siddhi.core.query.processor.Processor;
 import org.wso2.siddhi.core.query.processor.stream.StreamProcessor;
+import org.wso2.siddhi.core.util.config.ConfigReader;
 import org.wso2.siddhi.query.api.definition.AbstractDefinition;
 import org.wso2.siddhi.query.api.definition.Attribute;
-import org.wso2.siddhi.query.api.exception.ExecutionPlanValidationException;
+import org.wso2.siddhi.query.api.exception.SiddhiAppValidationException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,40 +42,53 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This is a custom extension, written for a certain throttler.
- * Upon arrival of a request, looking at the key in the request, this throttler first decides whether to throttle the request or not.
- * If that decision is different to what it was for the previous request (with the same key),
- * then this processor emits this request as an event; hence the name emitOnStateChange.
+ * This is a custom extension, written for a certain throttler. Upon arrival of a request, looking at the key in the
+ * request, this throttler first decides whether to throttle the request or not. If that decision is different to what
+ * it was for the previous request (with the same key), then this processor emits this request as an event; hence the
+ * name emitOnStateChange.
  * <p/>
  * If this request is the first request from a certain key, then that requested will be emitted out.
  * <p/>
- * This is useful when the throttler needs to alert only when the throttling decision is changed, in contrast to alerting about every decision taken.
+ * This is useful when the throttler needs to alert only when the throttling decision is changed, in contrast to
+ * alerting about every decision taken.
  * <p/>
- * Usage:
- * throttler:emitOnStateChange(key, isThrottled)
+ * Usage: throttler:emitOnStateChange(key, isThrottled)
  * <p/>
- * Parameters:
- * key: The key coming in the request, based on which throttling decision was made.
- * isThrottled: The throttling decision made.
+ * Parameters: key: The key coming in the request, based on which throttling decision was made. isThrottled: The
+ * throttling decision made.
  * <p/>
- * Example on usage:
- * from DecisionStream#throttler:emitOnStateChange(key, isThrottled)
- * select *
- * insert into AlertStream;
+ * Example on usage: from DecisionStream#throttler:emitOnStateChange(key, isThrottled) select * insert into
+ * AlertStream;
  */
+@Extension(name = "emitOnStateChange", namespace = "throttler", description = "The logger stream processor logs the "
+        + "message with or without event for the given log priority.", parameters = {
+        @Parameter(name = "throttle.key", description = "The priority/type of this log message.", type = {
+                DataType.STRING }),
+        @Parameter(name = "is.throttled", description = "This submit the log message.", type = {
+                DataType.STRING }) }, examples = {
+        @Example(syntax = "from fooStream#log(\"INFO\", \"Sample Event :\", true)\nselect *\ninsert into barStream;",
+                description = "This will log as INFO with the message \"Sample Event :\" + fooStream:events."),
+        @Example(syntax = "from fooStream#log(\"Sample Event :\", true)\nselect *\ninsert into barStream;",
+                description = "This will logs with default log level as INFO."),
+        @Example(syntax = "from fooStream#log(\"Sample Event :\", fasle)\nselect *\ninsert into barStream;",
+                description = "This will only log message."),
+        @Example(syntax = "from fooStream#log(true)\nselect *\ninsert into barStream;",
+                description = "This will only log fooStream:events."),
+        @Example(syntax = "from fooStream#log(\"Sample Event :\")\nselect *\ninsert into barStream;",
+                description = "This will log message and fooStream:events.") })
 public class EmitOnStateChange extends StreamProcessor {
     private VariableExpressionExecutor keyExpressionExecutor;
     private VariableExpressionExecutor isThrottledExpressionExecutor;
-    private Map<String, Boolean> throttleStateMap = new HashMap<String, Boolean>();
+    private Map<String, Object> throttleStateMap = new HashMap<String, Object>();
 
     @Override
     protected void process(ComplexEventChunk<StreamEvent> streamEventChunk, Processor nextProcessor,
-                           StreamEventCloner streamEventCloner, ComplexEventPopulater complexEventPopulater) {
+            StreamEventCloner streamEventCloner, ComplexEventPopulater complexEventPopulater) {
         while (streamEventChunk.hasNext()) {
             StreamEvent event = streamEventChunk.next();
             Boolean currentThrottleState = (Boolean) isThrottledExpressionExecutor.execute(event);
             String key = (String) keyExpressionExecutor.execute(event);
-            Boolean lastThrottleState = throttleStateMap.get(key);
+            Boolean lastThrottleState = (Boolean) throttleStateMap.get(key);
             if (lastThrottleState == currentThrottleState && !currentThrottleState) {
                 streamEventChunk.remove();
             } else {
@@ -82,24 +100,21 @@ public class EmitOnStateChange extends StreamProcessor {
 
     @Override
     protected List<Attribute> init(AbstractDefinition inputDefinition,
-                                   ExpressionExecutor[] attributeExpressionExecutors,
-                                   ExecutionPlanContext executionPlanContext) {
+            ExpressionExecutor[] attributeExpressionExecutors, ConfigReader configReader,
+            SiddhiAppContext executionPlanContext) {
         if (attributeExpressionExecutors.length != 2) {
-            throw new ExecutionPlanValidationException("Invalid no of arguments passed to throttler:emitOnStateChange" +
-                                                       "(key,isThrottled), required 2, but found "
-                                                       + attributeExpressionExecutors.length);
+            throw new SiddhiAppValidationException("Invalid no of arguments passed to throttler:emitOnStateChange"
+                    + "(key,isThrottled), required 2, but found " + attributeExpressionExecutors.length);
         }
         if (attributeExpressionExecutors[0].getReturnType() != Attribute.Type.STRING) {
-            throw new ExecutionPlanValidationException("Invalid parameter type found for the argument of " +
-                                                       "throttler:emitOnStateChange(key,isThrottled), " +
-                                                       "required " + Attribute.Type.STRING + ", " +
-                                                       "but found " + attributeExpressionExecutors[0].getReturnType());
+            throw new SiddhiAppValidationException("Invalid parameter type found for the argument of "
+                    + "throttler:emitOnStateChange(key,isThrottled), " + "required " + Attribute.Type.STRING + ", "
+                    + "but found " + attributeExpressionExecutors[0].getReturnType());
         }
         if (attributeExpressionExecutors[1].getReturnType() != Attribute.Type.BOOL) {
-            throw new ExecutionPlanValidationException("Invalid parameter type found for the argument of " +
-                                                       "throttler:emitOnStateChange(key,isThrottled), " +
-                                                       "required " + Attribute.Type.BOOL + ", but found " +
-                                                       attributeExpressionExecutors[1].getReturnType());
+            throw new SiddhiAppValidationException("Invalid parameter type found for the argument of "
+                    + "throttler:emitOnStateChange(key,isThrottled), " + "required " + Attribute.Type.BOOL
+                    + ", but found " + attributeExpressionExecutors[1].getReturnType());
         }
         keyExpressionExecutor = (VariableExpressionExecutor) attributeExpressionExecutors[0];
         isThrottledExpressionExecutor = (VariableExpressionExecutor) attributeExpressionExecutors[1];
@@ -117,12 +132,12 @@ public class EmitOnStateChange extends StreamProcessor {
     }
 
     @Override
-    public Object[] currentState() {
-        return new Object[]{throttleStateMap};
+    public Map<String, Object> currentState() {
+        return throttleStateMap;
     }
 
     @Override
-    public void restoreState(Object[] state) {
-        throttleStateMap = (HashMap<String, Boolean>) state[0];
+    public void restoreState(Map<String, Object> state) {
+        throttleStateMap = state;
     }
 }
