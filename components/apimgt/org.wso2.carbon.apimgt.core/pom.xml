@@ -439,7 +439,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>2.19.1</version>
+                        <version>2.22.1</version>
                         <executions>
                             <execution>
                                 <id>integration-test-for-mysql</id>
@@ -521,7 +521,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>2.19.1</version>
+                        <version>2.22.1</version>
                         <executions>
                             <execution>
                                 <id>integration-test-for-db2</id>
@@ -601,7 +601,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>2.19.1</version>
+                        <version>2.22.1</version>
                         <executions>
                             <execution>
                                 <id>integration-test-for-mssql</id>
@@ -638,7 +638,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>2.19.1</version>
+                        <version>2.22.1</version>
                         <executions>
                             <execution>
                                 <id>integration-test-for-h2</id>
@@ -719,7 +719,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>2.19.1</version>
+                        <version>2.22.1</version>
                         <executions>
                             <execution>
                                 <id>integration-test-for-postgres</id>
@@ -799,7 +799,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>2.19.1</version>
+                        <version>2.22.1</version>
                         <executions>
                             <execution>
                                 <id>integration-test-for-postgres</id>
@@ -837,7 +837,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
-                        <version>2.19.1</version>
+                        <version>2.22.1</version>
                         <executions>
                             <execution>
                                 <id>integration-for-generic-tests</id>
