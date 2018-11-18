@@ -446,7 +446,7 @@
             <dependency>
                 <groupId>com.spotify</groupId>
                 <artifactId>docker-client</artifactId>
-                <version>3.5.12</version>
+                <version>8.14.4</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
