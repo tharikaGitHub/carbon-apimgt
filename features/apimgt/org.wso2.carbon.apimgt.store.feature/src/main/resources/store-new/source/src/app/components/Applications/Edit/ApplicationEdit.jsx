@@ -23,13 +23,18 @@ import Grid from '@material-ui/core/Grid';
 import { Link } from 'react-router-dom';
 import Button from '@material-ui/core/Button';
 import Typography from '@material-ui/core/Typography';
-import ArrowBack from '@material-ui/icons/ArrowBack';
 import TextField from '@material-ui/core/TextField';
-import Input, { InputLabel } from '@material-ui/core/Input';
+import Toolbar from '@material-ui/core/Toolbar';
+import IconButton from '@material-ui/core/IconButton';
+import Slide from '@material-ui/core/Slide';
+import Dialog from '@material-ui/core/Dialog';
+import AppBar from '@material-ui/core/AppBar';
+import CloseIcon from '@material-ui/icons/Close';
+import Input from '@material-ui/core/Input';
+import InputLabel from '@material-ui/core/InputLabel';
 import Select from '@material-ui/core/Select';
 import FormControl from '@material-ui/core/FormControl';
-import { MenuItem } from '@material-ui/core/Menu';
-import Loading from '../../Base/Loading/Loading';
+import MenuItem from '@material-ui/core/MenuItem';
 import Application from '../../../data/Application';
 import API from '../../../data/api';
 import Alert from '../../Shared/Alert';
@@ -40,6 +45,14 @@ import ResourceNotFound from '../../Base/Errors/ResourceNotFound';
  * @param {*} theme
  */
 const styles = theme => ({
+    root: {
+        padding: theme.spacing.unit * 3,
+    },
+    appBar: {
+        position: 'relative',
+        backgroundColor: theme.palette.background.appBar,
+        color: theme.palette.getContrastText(theme.palette.background.appBar),
+    },
     titleBar: {
         display: 'flex',
         justifyContent: 'space-between',
@@ -67,8 +80,39 @@ const styles = theme => ({
     },
     buttonRight: {
         textDecoration: 'none',
+        color: 'white',
+    },
+    button: {
+        marginRight: theme.spacing.unit * 2,
+    },
+    FormControl: {
+        width: '100%',
+    },
+    FormControlOdd: {
+        backgroundColor: theme.palette.background.paper,
+        width: '100%',
+    },
+    flex: {
+        flex: 1,
+    },
+    createFormWrapper: {
+        paddingLeft: theme.spacing.unit * 5,
+    },
+    quotaHelp: {
+        position: 'relative',
     },
 });
+
+/**
+ *
+ *
+ * @param {*} props
+ * @returns
+ */
+function Transition(props) {
+    return <Slide direction='up' {...props} />;
+}
+
 /**
  *
  *
@@ -80,6 +124,7 @@ class ApplicationEdit extends Component {
         super(props);
         this.state = {
             name: null,
+            open: true,
             quota: 'Unlimited',
             description: null,
             id: null,
@@ -87,6 +132,7 @@ class ApplicationEdit extends Component {
             notFound: false,
             lifeCycleStatus: null,
         };
+        this.handleChange = this.handleChange.bind(this);
     }
 
     /**
@@ -96,13 +142,13 @@ class ApplicationEdit extends Component {
      */
     componentDidMount() {
         const api = new API();
-        const promised_application = Application.get(this.props.match.params.application_id);
-        const promised_tiers = api.getAllTiers('application');
-        Promise.all([promised_application, promised_tiers])
+        const promisedApplication = Application.get(this.props.match.params.application_id);
+        const promisedTiers = api.getAllTiers('application');
+        Promise.all([promisedApplication, promisedTiers])
             .then((response) => {
                 const [application, tierResponse] = response;
                 this.setState({
-                    quota: application.throttlingTier,
+                    quota: application.throttlingPolicy,
                     name: application.name,
                     description: application.description,
                     id: application.id,
@@ -113,11 +159,13 @@ class ApplicationEdit extends Component {
                 this.setState({ tiers });
             })
             .catch((error) => {
-                const status = error.status;
+                if (process.env.NODE_ENV !== 'production') {
+                    console.log(error);
+                }
+                const { status } = error;
                 if (status === 404) {
                     this.setState({ notFound: true });
                 }
-                console.error(error);
             });
     }
 
@@ -128,6 +176,15 @@ class ApplicationEdit extends Component {
      */
     handleChange = name => (event) => {
         this.setState({ [name]: event.target.value });
+    };
+
+    /**
+     *
+     *
+     * @memberof ApplicationEdit
+     */
+    handleClose = () => {
+        this.setState({ open: false });
     };
 
     /**
@@ -178,77 +235,96 @@ class ApplicationEdit extends Component {
             return <ResourceNotFound />;
         }
         return (
-            <Grid container spacing={0} justify='flex-start'>
-                <Grid item xs={12} sm={12} md={12} lg={11} xl={10} className={classes.titleBar}>
-                    <div className={classes.buttonLeft}>
-                        <Link to={'/applications/' + id}>
-                            <Button variant='raised' size='small' className={classes.buttonBack} color='default'>
-                                <ArrowBack />
-                            </Button>
-                        </Link>
-                        <div className={classes.title}>
-                            <Typography variant='display1'>Go Back</Typography>
-                        </div>
-                    </div>
-                </Grid>
-                <Grid item xs={12} lg={6} xl={4}>
-                    <form className={classes.container} noValidate autoComplete='off'>
-                        <TextField
-                            required
-                            label='Application Name'
-                            value={name}
-                            InputLabelProps={{
-                                shrink: true,
-                            }}
-                            helperText='Enter a name to identify the Application. You will be able to pick this application when subscribing to APIs '
-                            fullWidth
-                            name='name'
-                            onChange={this.handleChange('name')}
-                            placeholder='My Mobile Application'
-                            autoFocus
-                            className={classes.inputText}
-                        />
-                        {tiers && (
-                            <FormControl margin='normal'>
-                                <InputLabel htmlFor='quota-helper'>Per Token Quota</InputLabel>
-                                <Select value={quota} onChange={this.handleChange('quota')} input={<Input name='quota' id='quota-helper' />}>
-                                    {tiers.map(tier => (
-                                        <MenuItem key={tier} value={tier}>
-                                            {tier}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                                <div>Assign API request quota per access token. Allocated quota will be shared among all the subscribed APIs of the application.</div>
-                            </FormControl>
-                        )}
-                        <TextField
-                            label='Application Description'
-                            InputLabelProps={{
-                                shrink: true,
-                            }}
-                            value={description}
-                            helperText='Describe the application'
-                            fullWidth
-                            multiline
-                            rowsMax='4'
-                            name='description'
-                            onChange={this.handleChange('description')}
-                            placeholder='This application is grouping apis for my mobile application'
-                            className={classes.inputText}
-                        />
-                        <div className={classes.buttonsWrapper}>
-                            <Button variant='raised' color='primary' onClick={this.handleSubmit}>
-                                Update
-                            </Button>
+            <React.Fragment>
+                <Dialog fullScreen open={this.state.open} onClose={this.handleClose} TransitionComponent={Transition}>
+                    <AppBar className={classes.appBar}>
+                        <Toolbar>
                             <Link to='/applications' className={classes.buttonRight}>
-                                <Button variant='raised' className={classes.buttonAlignment}>
-                                    Cancel
-                                </Button>
+                                <IconButton color='inherit' onClick={this.handleClose} aria-label='Close'>
+                                    <CloseIcon />
+                                </IconButton>
                             </Link>
-                        </div>
-                    </form>
-                </Grid>
-            </Grid>
+                            <Typography variant='title' color='inherit' className={classes.flex}>
+                                Edit Application
+                            </Typography>
+                        </Toolbar>
+                    </AppBar>
+                    <div className={classes.createFormWrapper}>
+                        <form className={classes.container} noValidate autoComplete='off'>
+                            <Grid container spacing={24} className={classes.root}>
+                                <Grid item xs={12} md={6}>
+                                    <FormControl margin='normal' className={classes.FormControl}>
+                                        <TextField
+                                            required
+                                            label='Application Name'
+                                            value={this.state.name}
+                                            InputLabelProps={{
+                                                shrink: true,
+                                            }}
+                                            helperText='Enter a name to identify the Application. You will be able to pick this application when subscribing to APIs '
+                                            fullWidth
+                                            name='name'
+                                            onChange={this.handleChange('name')}
+                                            placeholder='My Mobile Application'
+                                            autoFocus
+                                            className={classes.inputText}
+                                        />
+                                    </FormControl>
+                                    {this.state.tiers && (
+                                        <FormControl margin='normal' className={classes.FormControlOdd}>
+                                            <InputLabel htmlFor='quota-helper' className={classes.quotaHelp}>
+                                                Per Token Quota
+                                            </InputLabel>
+                                            <Select
+                                                value={this.state.quota}
+                                                onChange={this.handleChange('quota')}
+                                                input={<Input name='quota' id='quota-helper' />}
+                                            >
+                                                {this.state.tiers.map(tier => (
+                                                    <MenuItem key={tier} value={tier}>
+                                                        {tier}
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                            <Typography variant='caption'>
+                                                Assign API request quota per access token. Allocated quota will be shared among all
+                                                the subscribed APIs of the application.
+                                            </Typography>
+                                        </FormControl>
+                                    )}
+                                    <FormControl margin='normal' className={classes.FormControl}>
+                                        <TextField
+                                            label='Application Description'
+                                            InputLabelProps={{
+                                                shrink: true,
+                                            }}
+                                            value={description}
+                                            helperText='Describe the application'
+                                            fullWidth
+                                            multiline
+                                            rowsMax='4'
+                                            name='description'
+                                            onChange={this.handleChange('description')}
+                                            placeholder='This application is grouping apis for my mobile application'
+                                            className={classes.inputText}
+                                        />
+                                    </FormControl>
+                                    <div className={classes.buttonsWrapper}>
+                                        <Link to='/applications' className={classes.buttonRight}>
+                                            <Button variant='outlined' className={classes.button}>
+                                                Cancel
+                                            </Button>
+                                        </Link>
+                                        <Button variant='contained' className={classes.button} color='primary' onClick={this.handleSubmit}>
+                                            UPDATE APPLICATION
+                                        </Button>
+                                    </div>
+                                </Grid>
+                            </Grid>
+                        </form>
+                    </div>
+                </Dialog>
+            </React.Fragment>
         );
     }
 }
