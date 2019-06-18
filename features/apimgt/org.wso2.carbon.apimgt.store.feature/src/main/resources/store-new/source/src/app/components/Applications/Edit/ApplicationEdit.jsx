@@ -127,7 +127,7 @@ class ApplicationEdit extends Component {
             open: true,
             quota: 'Unlimited',
             description: null,
-            id: null,
+            applicationId: null,
             tiers: [],
             notFound: false,
             lifeCycleStatus: null,
@@ -151,7 +151,7 @@ class ApplicationEdit extends Component {
                     quota: application.throttlingPolicy,
                     name: application.name,
                     description: application.description,
-                    id: application.id,
+                    applicationId: application.applicationId,
                     lifeCycleStatus: application.lifeCycleStatus,
                 });
                 const tiers = [];
@@ -198,9 +198,9 @@ class ApplicationEdit extends Component {
             Alert.error('Application name is required');
         } else {
             const updated_application = {
-                id: this.state.id,
+                applicationId: this.state.applicationId,
                 name: this.state.name,
-                throttlingTier: this.state.quota,
+                throttlingPolicy: this.state.quota,
                 description: this.state.description,
                 lifeCycleStatus: this.state.lifeCycleStatus,
             };
