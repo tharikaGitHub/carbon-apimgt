@@ -39,6 +39,7 @@ import Application from '../../../data/Application';
 import API from '../../../data/api';
 import Alert from '../../Shared/Alert';
 import ResourceNotFound from '../../Base/Errors/ResourceNotFound';
+
 /**
  *
  *
@@ -53,18 +54,6 @@ const styles = theme => ({
         backgroundColor: theme.palette.background.appBar,
         color: theme.palette.getContrastText(theme.palette.background.appBar),
     },
-    titleBar: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        borderBottomWidth: '1px',
-        borderBottomStyle: 'solid',
-        borderColor: theme.palette.text.secondary,
-        marginBottom: 20,
-    },
-    buttonLeft: {
-        alignSelf: 'flex-start',
-        display: 'flex',
-    },
     title: {
         display: 'inline-block',
         marginLeft: 20,
@@ -74,9 +63,6 @@ const styles = theme => ({
     },
     inputText: {
         marginTop: 20,
-    },
-    buttonAlignment: {
-        marginLeft: 20,
     },
     buttonRight: {
         textDecoration: 'none',
@@ -114,8 +100,6 @@ function Transition(props) {
 }
 
 /**
- *
- *
  * @class ApplicationEdit
  * @extends {Component}
  */
@@ -123,40 +107,41 @@ class ApplicationEdit extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            name: null,
+            appName: null,
             open: true,
             quota: 'Unlimited',
-            description: null,
-            applicationId: null,
-            tiers: [],
+            appDescription: null,
+            id: null,
+            appTiers: [],
             notFound: false,
-            lifeCycleStatus: null,
+            appLifeCycleStatus: null,
         };
         this.handleChange = this.handleChange.bind(this);
     }
 
     /**
-     *
-     *
      * @memberof ApplicationEdit
      */
     componentDidMount() {
+        const {
+            match,
+        } = this.props;
         const api = new API();
-        const promisedApplication = Application.get(this.props.match.params.application_id);
+        const promisedApplication = Application.get(match.params.application_id);
         const promisedTiers = api.getAllTiers('application');
         Promise.all([promisedApplication, promisedTiers])
             .then((response) => {
                 const [application, tierResponse] = response;
                 this.setState({
                     quota: application.throttlingPolicy,
-                    name: application.name,
-                    description: application.description,
-                    applicationId: application.applicationId,
-                    lifeCycleStatus: application.lifeCycleStatus,
+                    appName: application.name,
+                    appDescription: application.description,
+                    id: application.applicationId,
+                    appLifeCycleStatus: application.lifeCycleStatus,
                 });
-                const tiers = [];
-                tierResponse.body.list.map(item => tiers.push(item.name));
-                this.setState({ tiers });
+                const appTiers = [];
+                tierResponse.body.list.map(item => appTiers.push(item.name));
+                this.setState({ appTiers });
             })
             .catch((error) => {
                 if (process.env.NODE_ENV !== 'production') {
@@ -170,8 +155,6 @@ class ApplicationEdit extends Component {
     }
 
     /**
-     *
-     *
      * @memberof ApplicationEdit
      */
     handleChange = name => (event) => {
@@ -179,8 +162,6 @@ class ApplicationEdit extends Component {
     };
 
     /**
-     *
-     *
      * @memberof ApplicationEdit
      */
     handleClose = () => {
@@ -188,29 +169,33 @@ class ApplicationEdit extends Component {
     };
 
     /**
-     *
-     *
      * @memberof ApplicationEdit
      */
     handleSubmit = (event) => {
+        const {
+            appName, id, quota, appDescription, appLifeCycleStatus,
+        } = this.state;
+        const {
+            history,
+        } = this.props;
         event.preventDefault();
-        if (!this.state.name) {
+        if (!appName) {
             Alert.error('Application name is required');
         } else {
-            const updated_application = {
-                applicationId: this.state.applicationId,
-                name: this.state.name,
-                throttlingPolicy: this.state.quota,
-                description: this.state.description,
-                lifeCycleStatus: this.state.lifeCycleStatus,
+            const updatedApplication = {
+                applicationId: id,
+                name: appName,
+                throttlingPolicy: quota,
+                description: appDescription,
+                lifeCycleStatus: appLifeCycleStatus,
             };
             const api = new API();
-            const promised_update = api.updateApplication(updated_application, null);
-            promised_update
+            const promisedUpdate = api.updateApplication(updatedApplication, null);
+            promisedUpdate
                 .then((response) => {
                     const appId = response.body.applicationId;
                     const redirectUrl = '/applications/' + appId;
-                    this.props.history.push(redirectUrl);
+                    history.push(redirectUrl);
                     console.log('Application updated successfully.');
                 })
                 .catch((error) => {
@@ -221,22 +206,20 @@ class ApplicationEdit extends Component {
     };
 
     /**
-     *
-     *
-     * @returns
      * @memberof ApplicationEdit
+     * @returns {React.Fragment}
      */
     render() {
         const { classes } = this.props;
         const {
-            name, tiers, notFound, id, quota, description,
+            notFound, appDescription, open, appName, appTiers, quota,
         } = this.state;
         if (notFound) {
             return <ResourceNotFound />;
         }
         return (
             <React.Fragment>
-                <Dialog fullScreen open={this.state.open} onClose={this.handleClose} TransitionComponent={Transition}>
+                <Dialog fullScreen open={open} onClose={this.handleClose} TransitionComponent={Transition}>
                     <AppBar className={classes.appBar}>
                         <Toolbar>
                             <Link to='/applications' className={classes.buttonRight}>
@@ -257,38 +240,39 @@ class ApplicationEdit extends Component {
                                         <TextField
                                             required
                                             label='Application Name'
-                                            value={this.state.name}
+                                            value={appName || ''}
                                             InputLabelProps={{
                                                 shrink: true,
                                             }}
-                                            helperText='Enter a name to identify the Application. You will be able to pick this application when subscribing to APIs '
+                                            helperText='Enter a name to identify the Application. You will be able to
+                                            pick this application when subscribing to APIs '
                                             fullWidth
-                                            name='name'
-                                            onChange={this.handleChange('name')}
+                                            name='appName'
+                                            onChange={this.handleChange('appName')}
                                             placeholder='My Mobile Application'
                                             autoFocus
                                             className={classes.inputText}
                                         />
                                     </FormControl>
-                                    {this.state.tiers && (
+                                    {appTiers && (
                                         <FormControl margin='normal' className={classes.FormControlOdd}>
                                             <InputLabel htmlFor='quota-helper' className={classes.quotaHelp}>
                                                 Per Token Quota
                                             </InputLabel>
                                             <Select
-                                                value={this.state.quota}
+                                                value={quota}
                                                 onChange={this.handleChange('quota')}
                                                 input={<Input name='quota' id='quota-helper' />}
                                             >
-                                                {this.state.tiers.map(tier => (
+                                                {appTiers.map(tier => (
                                                     <MenuItem key={tier} value={tier}>
                                                         {tier}
                                                     </MenuItem>
                                                 ))}
                                             </Select>
                                             <Typography variant='caption'>
-                                                Assign API request quota per access token. Allocated quota will be shared among all
-                                                the subscribed APIs of the application.
+                                                Assign API request quota per access token. Allocated quota will be
+                                                shared among all the subscribed APIs of the application.
                                             </Typography>
                                         </FormControl>
                                     )}
@@ -298,24 +282,32 @@ class ApplicationEdit extends Component {
                                             InputLabelProps={{
                                                 shrink: true,
                                             }}
-                                            value={description}
+                                            value={appDescription || ''}
                                             helperText='Describe the application'
                                             fullWidth
                                             multiline
                                             rowsMax='4'
-                                            name='description'
-                                            onChange={this.handleChange('description')}
+                                            name='appDescription'
+                                            onChange={this.handleChange('appDescription')}
                                             placeholder='This application is grouping apis for my mobile application'
                                             className={classes.inputText}
                                         />
                                     </FormControl>
                                     <div className={classes.buttonsWrapper}>
                                         <Link to='/applications' className={classes.buttonRight}>
-                                            <Button variant='outlined' className={classes.button}>
+                                            <Button
+                                                variant='outlined'
+                                                className={classes.button}
+                                            >
                                                 Cancel
                                             </Button>
                                         </Link>
-                                        <Button variant='contained' className={classes.button} color='primary' onClick={this.handleSubmit}>
+                                        <Button
+                                            variant='contained'
+                                            className={classes.button}
+                                            color='primary'
+                                            onClick={this.handleSubmit}
+                                        >
                                             UPDATE APPLICATION
                                         </Button>
                                     </div>
