@@ -41,9 +41,8 @@ import Alert from '../../Shared/Alert';
 import ResourceNotFound from '../../Base/Errors/ResourceNotFound';
 
 /**
- *
- *
- * @param {*} theme
+ * @param {*} theme theme details
+ * @returns {Object}
  */
 const styles = theme => ({
     root: {
@@ -90,10 +89,8 @@ const styles = theme => ({
 });
 
 /**
- *
- *
- * @param {*} props
- * @returns
+ * @param {*} props props
+ * @returns {Slide}
  */
 function Transition(props) {
     return <Slide direction='up' {...props} />;
@@ -104,6 +101,9 @@ function Transition(props) {
  * @extends {Component}
  */
 class ApplicationEdit extends Component {
+    /**
+     * @param {Object} props props passed from above
+     */
     constructor(props) {
         super(props);
         this.state = {
@@ -123,9 +123,7 @@ class ApplicationEdit extends Component {
      * @memberof ApplicationEdit
      */
     componentDidMount() {
-        const {
-            match,
-        } = this.props;
+        const { match } = this.props;
         const api = new API();
         const promisedApplication = Application.get(match.params.application_id);
         const promisedTiers = api.getAllTiers('application');
@@ -155,6 +153,8 @@ class ApplicationEdit extends Component {
     }
 
     /**
+     * @param {object} name state key
+     * @returns {void}
      * @memberof ApplicationEdit
      */
     handleChange = name => (event) => {
@@ -169,6 +169,7 @@ class ApplicationEdit extends Component {
     };
 
     /**
+     * @param {Object} event the event object
      * @memberof ApplicationEdit
      */
     handleSubmit = (event) => {
@@ -322,7 +323,7 @@ class ApplicationEdit extends Component {
     }
 }
 ApplicationEdit.propTypes = {
-    classes: PropTypes.object.isRequired,
+    classes: PropTypes.shape({}).isRequired,
 };
 
 export default withStyles(styles)(ApplicationEdit);
