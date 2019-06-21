@@ -196,6 +196,7 @@ class ApplicationEdit extends Component {
                     const appId = response.body.applicationId;
                     const redirectUrl = '/applications/' + appId;
                     history.push(redirectUrl);
+                    Alert.info('Application updated successfully');
                     console.log('Application updated successfully.');
                 })
                 .catch((error) => {
