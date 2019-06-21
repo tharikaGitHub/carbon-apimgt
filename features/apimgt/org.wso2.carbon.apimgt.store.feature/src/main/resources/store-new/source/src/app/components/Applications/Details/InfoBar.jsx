@@ -21,7 +21,7 @@ import PropTypes from 'prop-types';
 import { withStyles } from '@material-ui/core/styles';
 import { KeyboardArrowLeft, ArrowDropDownOutlined, ArrowDropUpOutlined } from '@material-ui/icons';
 import Typography from '@material-ui/core/Typography';
-
+import Button from '@material-ui/core/Button';
 import { Link } from 'react-router-dom';
 import Collapse from '@material-ui/core/Collapse';
 import CheckCircle from '@material-ui/icons/CheckCircle';
@@ -174,6 +174,12 @@ const styles = theme => ({
         display: 'inline-block',
         paddingTop: 3,
     },
+    buttonRight: {
+        textDecoration: 'none',
+    },
+    button: {
+        marginRight: theme.spacing.unit * 2,
+    },
 });
 /**
  *
@@ -308,6 +314,18 @@ class InfoBar extends React.Component {
                                             Lifecycle Status
                                         </Typography>
                                     </div>
+                                    <Link
+                                        to={'/application/edit/' + this.props.applicationId}
+                                        className={classes.buttonRight}
+                                    >
+                                        <Button
+                                            variant='contained'
+                                            color='default'
+                                            className={classes.button}
+                                        >
+                                            Edit
+                                        </Button>
+                                    </Link>
                                 </div>
                                 <Typography>{application.description}</Typography>
                             </div>
