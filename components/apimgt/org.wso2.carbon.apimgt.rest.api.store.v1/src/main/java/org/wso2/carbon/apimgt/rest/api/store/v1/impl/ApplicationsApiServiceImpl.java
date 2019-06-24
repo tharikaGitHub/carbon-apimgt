@@ -154,6 +154,13 @@ public class ApplicationsApiServiceImpl implements ApplicationsApiService {
                 RestApiUtil.handleBadRequest("Specified tier " + tierName + " is invalid", log);
             }
 
+            Object applicationAttributesFromUser = body.getAttributes();
+            Map<String, String> applicationAttributes =
+                    new ObjectMapper().convertValue(applicationAttributesFromUser, Map.class);
+            if (applicationAttributes != null) {
+                body.setAttributes(applicationAttributes);
+            }
+
             //subscriber field of the body is not honored. It is taken from the context
             Application application = ApplicationMappingUtil.fromDTOtoApplication(body, username);
 
@@ -236,6 +243,14 @@ public class ApplicationsApiServiceImpl implements ApplicationsApiService {
             
             if (!RestAPIStoreUtils.isUserOwnerOfApplication(oldApplication)) {
                 RestApiUtil.handleAuthorizationFailure(RestApiConstants.RESOURCE_APPLICATION, applicationId, log);
+            }
+
+            Object applicationAttributesFromUser = body.getAttributes();
+            Map<String, String> applicationAttributes = new ObjectMapper()
+                    .convertValue(applicationAttributesFromUser, Map.class);
+
+            if (applicationAttributes != null) {
+                body.setAttributes(applicationAttributes);
             }
             
             //we do not honor the subscriber coming from the request body as we can't change the subscriber of the application

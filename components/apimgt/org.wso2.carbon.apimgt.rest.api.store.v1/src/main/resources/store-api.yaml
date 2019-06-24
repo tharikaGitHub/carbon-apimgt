@@ -3322,6 +3322,9 @@ definitions:
         example: ""
       subscriptionCount:
         type: integer
+      attributes:
+        type: object
+        example: External Reference ID, Billing Tier
 
 #-----------------------------------------------------
 # The Document List resource
