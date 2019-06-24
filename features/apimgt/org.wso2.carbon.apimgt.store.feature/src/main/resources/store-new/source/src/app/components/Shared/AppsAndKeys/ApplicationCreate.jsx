@@ -30,9 +30,8 @@ import PropTypes from 'prop-types';
 import API from '../../../data/api';
 
 /**
- *
- *
- * @param {*} theme
+ * @param {*} theme theme details
+ * @returns {Object}
  */
 const styles = theme => ({
     FormControl: {
@@ -55,6 +54,9 @@ const styles = theme => ({
  * @extends {Component}
  */
 class ApplicationCreate extends Component {
+    /**
+     * @param {Object} props props passed from above
+     */
     constructor(props) {
         super(props);
         this.state = {
@@ -62,8 +64,11 @@ class ApplicationCreate extends Component {
             tiers: [],
             description: null,
             name: null,
+            appAttributes: {},
+            allAppAttributes: null,
         };
         this.handleChange = this.handleChange.bind(this);
+        this.handleAttributesChange = this.handleAttributesChange.bind(this);
     }
 
     /**
@@ -74,17 +79,19 @@ class ApplicationCreate extends Component {
     componentDidMount() {
         // Get all the tires to populate the drop down.
         const api = new API();
-        const promiseTiers = api.getAllTiers('application');
-        promiseTiers
+        const promisedTiers = api.getAllTiers('application');
+        const promisedAttributes = api.getAllApplicationAttributes();
+        Promise.all([promisedTiers, promisedAttributes])
             .then((response) => {
-                const tierResponseObj = response.body;
+                const [tierResponse, allAttributes] = response;
                 const tiers = [];
-                tierResponseObj.list.map(item => tiers.push(item.name));
-                this.setState({ tiers });
-
+                tierResponse.body.list.map(item => tiers.push(item.name));
+                const allAppAttributes = [];
+                allAttributes.body.map(item => allAppAttributes.push(item));
                 if (tiers.length > 0) {
                     this.setState({ quota: tiers[0] });
                 }
+                this.setState({ tiers, allAppAttributes });
             })
             .catch((error) => {
                 if (process.env.NODE_ENV !== 'production') {
@@ -92,18 +99,29 @@ class ApplicationCreate extends Component {
                 }
                 const { status } = error;
                 if (status === 404) {
-                    this.setState({ notFound: true });
+                    console.log('Error retrieving data for application creation');
                 }
             });
     }
 
     /**
-     *
-     *
+     * @param {object} name state key
+     * @returns {void}
      * @memberof ApplicationCreate
      */
     handleChange = name => (event) => {
         this.setState({ [name]: event.target.value });
+    };
+
+    /**
+     * @param {object} name application attribute name
+     * @returns {void}
+     * @memberof ApplicationCreate
+     */
+    handleAttributesChange = name => (event) => {
+        const { appAttributes } = this.state;
+        appAttributes[name] = event.target.value;
+        this.setState({ appAttributes });
     };
 
     /**
@@ -113,7 +131,9 @@ class ApplicationCreate extends Component {
      * @memberof ApplicationCreate
      */
     handleSubmit() {
-        const { name, quota, description } = this.state;
+        const {
+            name, quota, description, appAttributes,
+        } = this.state;
         if (!name) {
             return Promise.reject(new Error('Application name is required'));
         } else {
@@ -121,6 +141,7 @@ class ApplicationCreate extends Component {
                 name,
                 throttlingPolicy: quota,
                 description,
+                attributes: appAttributes,
             };
             const newApi = new API();
             return newApi.createApplication(applicationData);
@@ -135,7 +156,9 @@ class ApplicationCreate extends Component {
      */
     render() {
         const { classes } = this.props;
-
+        const {
+            tiers, quota, allAppAttributes,
+        } = this.state;
         return (
             <form className={classes.container} noValidate autoComplete='off'>
                 <Grid container spacing={24} className={classes.root}>
@@ -157,18 +180,17 @@ class ApplicationCreate extends Component {
                                 className={classes.inputText}
                             />
                         </FormControl>
-
-                        {this.state.tiers && (
+                        {tiers && (
                             <FormControl margin='normal' className={classes.FormControlOdd}>
                                 <InputLabel htmlFor='quota-helper' className={classes.quotaHelp}>
                                     Per Token Quota
                                 </InputLabel>
                                 <Select
-                                    value={this.state.quota}
+                                    value={quota}
                                     onChange={this.handleChange('quota')}
                                     input={<Input name='quota' id='quota-helper' />}
                                 >
-                                    {this.state.tiers.map(tier => (
+                                    {tiers.map(tier => (
                                         <MenuItem key={tier} value={tier}>
                                             {tier}
                                         </MenuItem>
@@ -196,6 +218,30 @@ class ApplicationCreate extends Component {
                                 className={classes.inputText}
                             />
                         </FormControl>
+                        {allAppAttributes && (
+                            Object.entries(allAppAttributes).map(item => (
+                                item[1].Hidden === false ? (
+                                    <FormControl
+                                        margin='normal'
+                                        className={classes.FormControl}
+                                        key={item[1].Attribute}
+                                    >
+                                        <TextField
+                                            required={item[1].Required}
+                                            label={item[1].Attribute}
+                                            InputLabelProps={{
+                                                shrink: true,
+                                            }}
+                                            helperText={item[1].Description}
+                                            fullWidth
+                                            name={item[1].Attribute}
+                                            onChange={this.handleAttributesChange(item[1].Attribute)}
+                                            placeholder={'Enter ' + item[1].Attribute}
+                                            className={classes.inputText}
+                                        />
+                                    </FormControl>
+                                ) : (null)))
+                        )}
                     </Grid>
                 </Grid>
             </form>
@@ -204,7 +250,7 @@ class ApplicationCreate extends Component {
 }
 
 ApplicationCreate.propTypes = {
-    classes: PropTypes.object.isRequired,
+    classes: PropTypes.shape({}).isRequired,
 };
 
 export default withStyles(styles)(ApplicationCreate);
