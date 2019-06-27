@@ -22,6 +22,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -63,6 +65,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -205,6 +208,28 @@ public class ApplicationsApiServiceImpl implements ApplicationsApiService {
             APIConsumer apiConsumer = APIManagerFactory.getInstance().getAPIConsumer(username);
             Application application = apiConsumer.getApplicationByUUID(applicationId);
             if (application != null) {
+                String tenantDomain = RestApiUtil.getLoggedInUserTenantDomain();
+                // Remove hidden attributes and set the rest of the attributes from config
+                JSONArray applicationAttributesFromConfig = apiConsumer.getAppAttributesFromConfig(tenantDomain);
+                Map<String, String> existingApplicationAttributes = application.getApplicationAttributes();
+                Map<String, String> applicationAttributes = new HashMap<>();
+                if (existingApplicationAttributes != null && applicationAttributesFromConfig != null) {
+                    for (Object object : applicationAttributesFromConfig) {
+                        JSONObject attribute = (JSONObject) object;
+                        Boolean hidden = (Boolean) attribute.get(APIConstants.ApplicationAttributes.HIDDEN);
+                        String attributeName = (String) attribute.get(APIConstants.ApplicationAttributes.ATTRIBUTE);
+
+                        if (!BooleanUtils.isTrue(hidden)) {
+                            String attributeVal = existingApplicationAttributes.get(attributeName);
+                            if (attributeVal != null) {
+                                applicationAttributes.put(attributeName, attributeVal);
+                            } else {
+                                applicationAttributes.put(attributeName, "");
+                            }
+                        }
+                    }
+                }
+                application.setApplicationAttributes(applicationAttributes);
                 if (RestAPIStoreUtils.isUserAccessAllowedForApplication(application)) {
                     ApplicationDTO applicationDTO = ApplicationMappingUtil.fromApplicationtoDTO(application);
                     JSONArray scopes= apiConsumer.getScopesForApplicationSubscription(username, application.getId());
@@ -633,6 +658,23 @@ public class ApplicationsApiServiceImpl implements ApplicationsApiService {
                 RestApiUtil.handleInternalServerError("Error while generating keys for application "
                         + applicationId, e, log);
             }
+        }
+        return null;
+    }
+
+    @Override
+    public Response applicationsAttributesGet(String ifNoneMatch, MessageContext messageContext) {
+        return Response.ok().entity(getAllApplicationAttributes()).build();
+    }
+
+    private JSONArray getAllApplicationAttributes() {
+        String username = RestApiUtil.getLoggedInUsername();
+        try {
+            APIConsumer apiConsumer = APIManagerFactory.getInstance().getAPIConsumer(username);
+            String tenantDomain = RestApiUtil.getLoggedInUserTenantDomain();
+            return apiConsumer.getAppAttributesFromConfig(tenantDomain);
+        } catch (APIManagementException e) {
+            RestApiUtil.handleInternalServerError("Error occurred in reading application attributes from config", e, log);
         }
         return null;
     }
