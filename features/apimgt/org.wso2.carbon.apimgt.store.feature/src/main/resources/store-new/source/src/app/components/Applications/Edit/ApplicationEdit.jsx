@@ -115,6 +115,8 @@ class ApplicationEdit extends Component {
             appTiers: [],
             notFound: false,
             appLifeCycleStatus: null,
+            appAttributes: null,
+            allAppAttributes: null,
         };
         this.handleChange = this.handleChange.bind(this);
     }
@@ -127,19 +129,23 @@ class ApplicationEdit extends Component {
         const api = new API();
         const promisedApplication = Application.get(match.params.application_id);
         const promisedTiers = api.getAllTiers('application');
-        Promise.all([promisedApplication, promisedTiers])
+        const promisedAttributes = api.getAllApplicationAttributes();
+        Promise.all([promisedApplication, promisedTiers, promisedAttributes])
             .then((response) => {
-                const [application, tierResponse] = response;
+                const [application, tierResponse, allAttributes] = response;
                 this.setState({
                     quota: application.throttlingPolicy,
                     appName: application.name,
                     appDescription: application.description,
                     id: application.applicationId,
                     appLifeCycleStatus: application.lifeCycleStatus,
+                    appAttributes: application.attributes,
                 });
                 const appTiers = [];
                 tierResponse.body.list.map(item => appTiers.push(item.name));
-                this.setState({ appTiers });
+                const allAppAttributes = [];
+                allAttributes.body.map(item => allAppAttributes.push(item));
+                this.setState({ appTiers, allAppAttributes });
             })
             .catch((error) => {
                 if (process.env.NODE_ENV !== 'production') {
@@ -174,7 +180,7 @@ class ApplicationEdit extends Component {
      */
     handleSubmit = (event) => {
         const {
-            appName, id, quota, appDescription, appLifeCycleStatus,
+            appName, id, quota, appDescription, appLifeCycleStatus, appAttributes,
         } = this.state;
         const {
             history,
@@ -189,6 +195,7 @@ class ApplicationEdit extends Component {
                 throttlingPolicy: quota,
                 description: appDescription,
                 lifeCycleStatus: appLifeCycleStatus,
+                attributes: appAttributes,
             };
             const api = new API();
             const promisedUpdate = api.updateApplication(updatedApplication, null);
@@ -214,7 +221,7 @@ class ApplicationEdit extends Component {
     render() {
         const { classes } = this.props;
         const {
-            notFound, appDescription, open, appName, appTiers, quota,
+            notFound, appDescription, open, appName, appTiers, quota, appAttributes,
         } = this.state;
         if (notFound) {
             return <ResourceNotFound />;
@@ -295,6 +302,25 @@ class ApplicationEdit extends Component {
                                             className={classes.inputText}
                                         />
                                     </FormControl>
+                                    {appAttributes && (
+                                        <FormControl margin='normal' className={classes.FormControlOdd}>
+                                            {Object.entries(appAttributes).map(([key, value]) => (
+                                                <TextField
+                                                    label={key}
+                                                    InputLabelProps={{
+                                                        shrink: true,
+                                                    }}
+                                                    value={value}
+                                                    helperText='Describe the application'
+                                                    fullWidth
+                                                    name='apppAttributes'
+                                                    onChange={this.handleChange('appAttributes')}
+                                                    placeholder='Enter value'
+                                                    className={classes.inputText}
+                                                />
+                                            ))}
+                                        </FormControl>
+                                    )}
                                     <div className={classes.buttonsWrapper}>
                                         <Link to='/applications' className={classes.buttonRight}>
                                             <Button
