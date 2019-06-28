@@ -117,8 +117,10 @@ class ApplicationEdit extends Component {
             appLifeCycleStatus: null,
             appAttributes: null,
             allAppAttributes: null,
+            list: { 'Attribute 1': 'value of attribute1', 'Attribute 2': 'value of the attribute2' },
         };
         this.handleChange = this.handleChange.bind(this);
+        this.handleAttributesChange = this.handleAttributesChange.bind(this);
     }
 
     /**
@@ -165,6 +167,17 @@ class ApplicationEdit extends Component {
      */
     handleChange = name => (event) => {
         this.setState({ [name]: event.target.value });
+    };
+
+    /**
+     * @param {object} name application attribute name
+     * @returns {void}
+     * @memberof ApplicationEdit
+     */
+    handleAttributesChange = name => (event) => {
+        const { appAttributes } = this.state;
+        appAttributes[name.key] = event.target.value;
+        this.setState({ appAttributes });
     };
 
     /**
@@ -221,7 +234,7 @@ class ApplicationEdit extends Component {
     render() {
         const { classes } = this.props;
         const {
-            notFound, appDescription, open, appName, appTiers, quota, appAttributes,
+            notFound, appDescription, open, appName, appTiers, quota, appAttributes, list,
         } = this.state;
         if (notFound) {
             return <ResourceNotFound />;
@@ -313,8 +326,9 @@ class ApplicationEdit extends Component {
                                                     value={value}
                                                     helperText='Describe the application'
                                                     fullWidth
-                                                    name='apppAttributes'
-                                                    onChange={this.handleChange('appAttributes')}
+                                                    key={key}
+                                                    name={key}
+                                                    onChange={this.handleAttributesChange({ key })}
                                                     placeholder='Enter value'
                                                     className={classes.inputText}
                                                 />
