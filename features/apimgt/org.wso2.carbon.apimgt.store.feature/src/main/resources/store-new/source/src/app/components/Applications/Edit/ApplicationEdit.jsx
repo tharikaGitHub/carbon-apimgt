@@ -117,7 +117,6 @@ class ApplicationEdit extends Component {
             appLifeCycleStatus: null,
             appAttributes: null,
             allAppAttributes: null,
-            list: { 'Attribute 1': 'value of attribute1', 'Attribute 2': 'value of the attribute2' },
         };
         this.handleChange = this.handleChange.bind(this);
         this.handleAttributesChange = this.handleAttributesChange.bind(this);
@@ -234,7 +233,7 @@ class ApplicationEdit extends Component {
     render() {
         const { classes } = this.props;
         const {
-            notFound, appDescription, open, appName, appTiers, quota, appAttributes, list,
+            notFound, appDescription, open, appName, appTiers, quota, appAttributes, allAppAttributes,
         } = this.state;
         if (notFound) {
             return <ResourceNotFound />;
@@ -316,24 +315,30 @@ class ApplicationEdit extends Component {
                                         />
                                     </FormControl>
                                     {appAttributes && (
-                                        <FormControl margin='normal' className={classes.FormControlOdd}>
-                                            {Object.entries(appAttributes).map(([key, value]) => (
+                                        Object.entries(appAttributes).map(([key, value]) => (
+                                            <FormControl margin='normal' className={classes.FormControl} key={key}>
                                                 <TextField
                                                     label={key}
                                                     InputLabelProps={{
                                                         shrink: true,
                                                     }}
                                                     value={value}
-                                                    helperText='Describe the application'
+                                                    helperText={allAppAttributes
+                                                        && (Object.entries(allAppAttributes).map((item) => {
+                                                            if (item[1].Attribute === key) {
+                                                                return item[1].Description;
+                                                            }
+                                                            return '';
+                                                        }))
+                                                    }
                                                     fullWidth
-                                                    key={key}
                                                     name={key}
                                                     onChange={this.handleAttributesChange({ key })}
-                                                    placeholder='Enter value'
+                                                    placeholder={'Enter ' + key}
                                                     className={classes.inputText}
                                                 />
-                                            ))}
-                                        </FormControl>
+                                            </FormControl>
+                                        ))
                                     )}
                                     <div className={classes.buttonsWrapper}>
                                         <Link to='/applications' className={classes.buttonRight}>
