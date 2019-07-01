@@ -120,6 +120,7 @@ class ApplicationEdit extends Component {
         };
         this.handleChange = this.handleChange.bind(this);
         this.handleAttributesChange = this.handleAttributesChange.bind(this);
+        this.isRequiredAttribute = this.isRequiredAttribute.bind(this);
     }
 
     /**
@@ -177,6 +178,23 @@ class ApplicationEdit extends Component {
         const { appAttributes } = this.state;
         appAttributes[name.key] = event.target.value;
         this.setState({ appAttributes });
+    };
+
+    /**
+     * @param {object} name application attribute name
+     * @returns {void}
+     * @memberof ApplicationEdit
+     */
+    isRequiredAttribute = (name) => {
+        const { allAppAttributes } = this.state;
+        if (allAppAttributes) {
+            for (let i = 0; i < allAppAttributes.length; i++) {
+                if (allAppAttributes[i].Attribute === name.key) {
+                    return allAppAttributes[i].Required;
+                }
+            }
+        }
+        return false;
     };
 
     /**
@@ -318,6 +336,7 @@ class ApplicationEdit extends Component {
                                         Object.entries(appAttributes).map(([key, value]) => (
                                             <FormControl margin='normal' className={classes.FormControl} key={key}>
                                                 <TextField
+                                                    required={this.isRequiredAttribute({ key })}
                                                     label={key}
                                                     InputLabelProps={{
                                                         shrink: true,
