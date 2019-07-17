@@ -116,7 +116,7 @@ class ApplicationEdit extends Component {
             appTiers: [],
             notFound: false,
             appLifeCycleStatus: null,
-            appAttributes: null,
+            appAttributes: {},
             allAppAttributes: null,
         };
         this.handleChange = this.handleChange.bind(this);
