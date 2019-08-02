@@ -19,11 +19,10 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { withStyles } from '@material-ui/core/styles';
 import {
-    KeyboardArrowLeft, StarRate, FileCopy, ArrowDropDownOutlined, ArrowDropUpOutlined,
+    KeyboardArrowLeft, FileCopy, ArrowDropDownOutlined, ArrowDropUpOutlined,
 } from '@material-ui/icons';
 import Typography from '@material-ui/core/Typography';
 import TextField from '@material-ui/core/TextField';
-import HighlightOff from '@material-ui/icons/HighlightOff';
 import { Link } from 'react-router-dom';
 import CopyToClipboard from 'react-copy-to-clipboard';
 import Tooltip from '@material-ui/core/Tooltip';
@@ -35,15 +34,16 @@ import TableRow from '@material-ui/core/TableRow';
 import CalendarViewDay from '@material-ui/icons/CalendarViewDay';
 import AccountBalanceWallet from '@material-ui/icons/AccountBalanceWallet';
 import AccountCircle from '@material-ui/icons/AccountCircle';
+import Grade from '@material-ui/icons/Grade';
 import Update from '@material-ui/icons/Update';
 import LinkIcon from '@material-ui/icons/Link';
 import Button from '@material-ui/core/Button';
-import { FormattedMessage, injectIntl, } from 'react-intl';
+import { FormattedMessage, injectIntl } from 'react-intl';
 import VerticalDivider from '../../Shared/VerticalDivider';
 import ImageGenerator from '../Listing/ImageGenerator';
-import Api from '../../../data/api';
+import StarRatingBar from '../Listing/StarRatingBar';
 import ResourceNotFound from '../../Base/Errors/ResourceNotFound';
-import Loading from '../../Base/Loading/Loading';
+import AuthManager from '../../../data/AuthManager';
 import { ApiContext } from './ApiContext';
 
 /**
@@ -78,11 +78,11 @@ const styles = theme => ({
         marginRight: 10,
     },
     starRate: {
-        fontSize: 70,
+        fontSize: 40,
         color: theme.custom.starColor,
     },
     starRateMy: {
-        fontSize: 70,
+        fontSize: 40,
         color: theme.palette.primary.main,
     },
     rateLink: {
@@ -244,234 +244,7 @@ const styles = theme => ({
         marginLeft: 30,
     },
 });
-/**
- *
- *
- * @class StarRatingBar
- * @extends {React.Component}
- */
-class StarRatingBar extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            rating: null,
-            dummyRateValue: 1,
-            showRateNow: false,
-        };
 
-        this.handleMouseOver = this.handleMouseOver.bind(this);
-        this.handleRatingUpdate = this.handleRatingUpdate.bind(this);
-        this.handleMouseOut = this.handleMouseOut.bind(this);
-    }
-
-    /**
-     *
-     *
-     * @memberof StarRatingBar
-     */
-    updateRating() {
-        const api = new Api();
-
-        // get user rating
-        const promised_rating = api.getRatingFromUser(this.props.apiIdProp, null);
-        promised_rating.then((response) => {
-            this.setState({
-                // rating: response.obj,
-                // dummyRateValue: response.obj.userRating,
-            });
-        });
-    }
-
-    /**
-     *
-     *
-     * @memberof StarRatingBar
-     */
-    componentDidMount() {
-        this.updateRating();
-    }
-
-    /**
-     *
-     *
-     * @param {*} index
-     * @memberof StarRatingBar
-     */
-    handleMouseOver(index) {
-        this.setState({ rating: index });
-    }
-
-    /**
-     *
-     *
-     * @memberof StarRatingBar
-     */
-    handleMouseOut() {
-        this.setState({ rating: this.state.previousRating });
-    }
-
-    /**
-     *
-     *
-     * @memberof StarRatingBar
-     */
-    handleRatingUpdate() {}
-
-    /**
-     *
-     *
-     * @memberof StarRatingBar
-     */
-    handleClickAway = () => {
-        this.setState({
-            showRateNow: false,
-        });
-    };
-
-    /**
-     *
-     *
-     * @memberof StarRatingBar
-     */
-    showRateBox = () => {
-        this.setState({
-            showRateNow: true,
-        });
-    };
-
-    /**
-     *
-     *
-     * @param {*} index
-     * @memberof StarRatingBar
-     */
-    highlightUs(index) {
-        this.setState({ dummyRateValue: index });
-    }
-
-    /**
-     *
-     *
-     * @memberof StarRatingBar
-     */
-    unhighlightUs() {
-        this.setState({ dummyRateValue: 1 });
-    }
-
-    /**
-     *
-     *
-     * @param {*} rateIndex
-     * @memberof StarRatingBar
-     */
-    doRate(rateIndex) {
-        this.setState({ rateIndex, showRateNow: false });
-
-        const api = new Api();
-        const ratingInfo = { rating: rateIndex / 2 };
-        const promise = api.addRating(this.props.apiIdProp, ratingInfo);
-        promise
-            .then((response) => {
-                this.updateRating();
-                // message.success("Rating updated successfully");
-            })
-            .catch((error) => {
-                // message.error("Error occurred while adding ratings!");
-            });
-    }
-
-    /**
-     *
-     *
-     * @returns
-     * @memberof StarRatingBar
-     */
-    render() {
-        const { classes, theme } = this.props;
-        if (!this.state.rating) {
-            return <span />;
-        }
-        return (
-            <React.Fragment>
-                {this.state.rating.count > 0 ? (
-                    <React.Fragment>
-                        <StarRate className={classes.starRate} />
-                        <div className={classes.ratingSummery}>
-                            <div className={classes.userRating}>
-                                <Typography variant='display1'>{this.state.rating.avgRating * 2}</Typography>
-                                <Typography variant='caption'>/10</Typography>
-                            </div>
-                            <Typography variant='caption' gutterBottom align='left'>
-                                {this.state.rating.count}
-                                {' '}
-                                {this.state.rating.count == 1 ? 'user' : 'users'}
-                            </Typography>
-                        </div>
-                    </React.Fragment>
-                ) : (
-                    <StarRate
-                        onClick={this.showRateBox}
-                        className={classes.starRate}
-                        style={{ color: theme.palette.grey.A200 }}
-                    />
-                )}
-                <VerticalDivider height={32} />
-                <div className={classes.ratingBoxWrapper}>
-                    {this.state.showRateNow && (
-                        <div className={classes.ratingBox}>
-                            <HighlightOff />
-                            <VerticalDivider height={32} />
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
-                                <StarRate
-                                    color={
-                                        i <= this.state.rating.userRating * 2 || i <= this.state.dummyRateValue
-                                            ? 'primary'
-                                            : ''
-                                    }
-                                    onMouseOver={() => this.highlightUs(i)}
-                                    onMouseLeave={() => this.unhighlightUs()}
-                                    onClick={() => this.doRate(i)}
-                                />
-                            ))}
-                        </div>
-                    )}
-                    {this.state.rating.userRating ? (
-                        <React.Fragment>
-                            <StarRate className={classes.starRateMy} onClick={this.showRateBox} />
-                            <div className={classes.ratingSummery} onClick={this.showRateBox}>
-                                <Typography variant='display1'>{this.state.rating.userRating * 2}</Typography>
-                                <Typography variant='caption' gutterBottom align='left'>
-                                    <FormattedMessage id='Apis.Details.InfoBar.you' defaultMessage='YOU' />
-                                </Typography>
-                            </div>
-                        </React.Fragment>
-                    ) : (
-                        <React.Fragment>
-                            <StarRate
-                                onClick={this.showRateBox}
-                                className={classes.starRate}
-                                style={{ color: theme.palette.grey.A200 }}
-                            />
-                            <Typography onClick={this.showRateBox} className={classes.rateLink}>
-                                <FormattedMessage
-                                    id='Apis.Details.InfoBar.rate.this.api'
-                                    defaultMessage='Rate this API'
-                                />
-                            </Typography>
-                        </React.Fragment>
-                    )}
-                </div>
-            </React.Fragment>
-        );
-    }
-}
-
-StarRatingBar.propTypes = {
-    classes: PropTypes.object.isRequired,
-    theme: PropTypes.object.isRequired,
-};
-
-StarRatingBar = withStyles(styles, { withTheme: true })(StarRatingBar);
 /**
  *
  *
@@ -558,6 +331,7 @@ class InfoBar extends React.Component {
             notFound, showOverview, prodUrlCopied, sandboxUrlCopied, epUrl,
         } = this.state;
         const { resourceNotFountMessage } = this.props;
+        const user = AuthManager.getUser();
         if (notFound) {
             return <ResourceNotFound message={resourceNotFountMessage} />;
         }
@@ -585,7 +359,7 @@ class InfoBar extends React.Component {
                                 </Typography>
                             </div>
                             <VerticalDivider height={70} />
-                            <StarRatingBar apiIdProp={api.id} />
+                            {user && <StarRatingBar apiId={api.id} isEditable={false} showSummary />}
                         </div>
 
                         {showOverview && (
@@ -768,6 +542,24 @@ class InfoBar extends React.Component {
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
+                                                {user && (
+                                                    <TableRow>
+                                                        <TableCell component='th' scope='row'>
+                                                            <div className={classes.iconAligner}>
+                                                                <Grade className={classes.iconOdd} />
+                                                                <span className={classes.iconTextWrapper}>
+                                                                    <FormattedMessage
+                                                                        id='Apis.Details.InfoBar.list.context.rating'
+                                                                        defaultMessage='Rating'
+                                                                    />
+                                                                </span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <StarRatingBar apiId={api.id} isEditable showSummary={false} />
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
                                             </TableBody>
                                         </Table>
                                     </div>

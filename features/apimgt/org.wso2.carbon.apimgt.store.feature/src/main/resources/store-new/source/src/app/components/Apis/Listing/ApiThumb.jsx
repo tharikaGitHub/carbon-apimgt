@@ -25,7 +25,7 @@ import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import { FormattedMessage } from 'react-intl';
 import ImageGenerator from './ImageGenerator';
-import StarRatingBar from './StarRating';
+import StarRatingBar from './StarRatingBar';
 import Api from '../../../data/api';
 
 /**
@@ -111,9 +111,9 @@ class ApiThumb extends React.Component {
      */
     componentDidMount() {
         const api = new Api();
-        const promised_rating = api.getRatingFromUser(this.props.api.id, null);
-        promised_rating.then((response) => {
-            this.setState({ rating: response.obj.userRating });
+        const promisedRating = api.getRatingFromUser(this.props.api.id, null);
+        promisedRating.then((response) => {
+            this.setState({ rating: response.body.avgRating });
         });
     }
 
@@ -130,8 +130,6 @@ class ApiThumb extends React.Component {
         const {
             name, version, context, provider,
         } = this.props.api;
-        const { rating } = this.state;
-        const starColor = theme.palette.getContrastText(theme.custom.imageThumbnail.contentBackgroundColor);
         const imageWidth = theme.custom.imageThumbnail.width;
         const defaultImage = theme.custom.imageThumbnail.defaultApiImage;
         return (
@@ -174,7 +172,7 @@ class ApiThumb extends React.Component {
                     </div>
                     <div className={classes.thumbInfo}>
                         <Typography variant='subheading' gutterBottom align='left'>
-                            <StarRatingBar rating={rating} starColor={starColor} />
+                            <StarRatingBar apiId={api.id} isEditable={false} showSummary={false} />
                         </Typography>
                     </div>
                 </div>

@@ -5,46 +5,11 @@ import { createMuiTheme, MuiThemeProvider, withStyles } from '@material-ui/core/
 import MUIDataTable from 'mui-datatables';
 import { injectIntl, } from 'react-intl';
 import ImageGenerator from './ImageGenerator';
-import StarRatingBar from './StarRating';
+import StarRatingBar from './StarRatingBar';
 import API from '../../../data/api';
 
 function LinkGenerator(props){
     return <Link to={"/apis/" + props.apiId}>{props.apiName}</Link>
-}
-
-class StarRatingColumn extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            rating: null,
-        };
-        this.api = new API();
-    }
-
-    componentDidMount() {
-        const promised_rating = this.api.getRatingFromUser(this.props.apiId, null);
-        promised_rating
-            .then((response) => {
-                const rating = response.obj;
-                this.setState({
-                    rating: rating.userRating,
-                });
-            })
-            .catch((error) => {
-                if (process.env.NODE_ENV !== 'production') {
-                    console.log(error);
-                }
-                const status = error.status;
-                if (status === 404) {
-                    this.setState({ notFound: true });
-                }
-            });
-    }
-
-    render() {
-        const { rating } = this.state;
-        return rating && <StarRatingBar rating={rating} />;
-    }
 }
 
 class ApiTableView extends React.Component {
@@ -135,18 +100,20 @@ class ApiTableView extends React.Component {
                     customBodyRender: (value, tableMeta, updateValue) => {
                         if (tableMeta.rowData) {
                             const apiId = tableMeta.rowData[0];
-                            return <StarRatingColumn apiId={apiId} />;
+                            return <StarRatingBar apiId={apiId} isEditable={false} showSummary={false} />;
                         }
                     },
                 },
             },
         ];
-        
+
         const { apis } = this.props;
 
-        return <MuiThemeProvider theme={this.getMuiTheme()}>
-            <MUIDataTable title='' data={apis} columns={columns} options={{ selectableRows: false }} />
-        </MuiThemeProvider>;
+        return (
+            <MuiThemeProvider theme={this.getMuiTheme()}>
+                <MUIDataTable title='' data={apis} columns={columns} options={{ selectableRows: false }} />
+            </MuiThemeProvider>
+        );
     }
 }
 
