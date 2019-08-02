@@ -73,6 +73,7 @@ public class APIMappingUtil {
         dto.setDescription(model.getDescription());
         dto.setIsDefaultVersion(model.isDefaultVersion());
         dto.setLifeCycleStatus(model.getStatus());
+        dto.setAvgRating(String.valueOf(model.getRating()));
 
         /* todo: created and last updated times
         if (null != model.getLastUpdated()) {
@@ -371,6 +372,7 @@ public class APIMappingUtil {
         apiInfoDTO.setVersion(apiId.getVersion());
         apiInfoDTO.setProvider(apiId.getProviderName());
         apiInfoDTO.setLifeCycleStatus(api.getStatus());
+        apiInfoDTO.setAvgRating(String.valueOf(api.getRating()));
         String providerName = api.getId().getProviderName();
         apiInfoDTO.setProvider(APIUtil.replaceEmailDomainBack(providerName));
         Set<Tier> throttlingPolicies = api.getAvailableTiers();
