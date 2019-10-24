@@ -7074,7 +7074,7 @@ public class ApiMgtDAO {
             connection.commit();
 
             synchronized (scopeMutex) {
-                updateScopes(api, tenantId);
+                updateScopes(api.getId(), api.getUriTemplates(), tenantId);
                 updateURLTemplates(api);
             }
         } catch (SQLException e) {
@@ -8794,8 +8794,9 @@ public class ApiMgtDAO {
         return storesSet;
     }
 
-    public void addScopes(Set<?> objects, APIIdentifier apiIdentifier, int apiID, int tenantID)
+    public void addScopes(Set<?> objects, Identifier identifier, int apiID, int tenantID)
             throws APIManagementException {
+
         Connection conn = null;
         PreparedStatement ps = null, ps2 = null, ps3 = null;
         ResultSet rs = null;
@@ -8828,7 +8829,7 @@ public class ApiMgtDAO {
                             continue;
                         }
 
-                        if (!scopeSharingEnabled && isScopeKeyAssigned(apiIdentifier, uriTemplate.getScope().getKey(), tenantID)) {
+                        if (!scopeSharingEnabled && isScopeKeyAssigned(identifier, uriTemplate.getScope().getKey(), tenantID)) {
                             throw new APIManagementException("Scope '" + uriTemplate.getScope().getKey() + "' " +
                                     "is already used by another API.");
                         }
@@ -8859,7 +8860,7 @@ public class ApiMgtDAO {
                         conn.commit();
                     } else if (object instanceof Scope) {
                         Scope scope = (Scope) object;
-                        if (!scopeSharingEnabled && isScopeKeyAssigned(apiIdentifier, scope.getKey(), tenantID)) {
+                        if (!scopeSharingEnabled && isScopeKeyAssigned(identifier, scope.getKey(), tenantID)) {
                             throw new APIManagementException("Scope '" + scope.getKey() + "' is already used " +
                                     "by another API.");
                         }
@@ -9292,7 +9293,7 @@ public class ApiMgtDAO {
      * @param api
      * @throws APIManagementException
      */
-    public void updateScopes(API api, int tenantId) throws APIManagementException {
+    public void updateScopes(Identifier id, Set<URITemplate> uriTemplates, int tenantId) throws APIManagementException {
 
         Connection connection = null;
         PreparedStatement prepStmt = null;
@@ -9305,7 +9306,7 @@ public class ApiMgtDAO {
             connection = APIMgtDBUtil.getConnection();
             connection.setAutoCommit(false);
 
-            apiId = getAPIID(api.getId(), connection);
+            apiId = getAPIID(id, connection);
             if (apiId == -1) {
                 //application addition has failed
                 return;
@@ -9328,11 +9329,11 @@ public class ApiMgtDAO {
             } catch (SQLException e1) {
                 handleException("Error occurred while Rolling back changes done on Scopes updating", e1);
             }
-            handleException("Error while updating Scopes for API : " + api.getId(), e);
+            handleException("Error while updating Scopes for API : " + id, e);
         } finally {
             APIMgtDBUtil.closeAllConnections(prepStmt, connection, null);
         }
-        addScopes(api.getUriTemplates(), api.getId(), apiId, tenantId);
+        addScopes(uriTemplates, id, apiId, tenantId);
     }
 
     public HashMap<String, String> getResourceToScopeMapping(APIIdentifier identifier) throws APIManagementException {
@@ -9635,8 +9636,26 @@ public class ApiMgtDAO {
      * @return true if the scope key is already available
      * @throws APIManagementException if failed to check the context availability
      */
-    public boolean isScopeKeyAssigned(APIIdentifier identifier, String scopeKey, int tenantId)
+    public boolean isScopeKeyAssigned(Identifier identifier, String scopeKey, int tenantId)
             throws APIManagementException {
+
+        APIIdentifier apiIdentifier = null;
+        APIProductIdentifier apiProdIdentifier = null;
+        String name = null;
+        String providerName = null;
+        String version = null;
+        if (identifier instanceof APIIdentifier) {
+            apiIdentifier = (APIIdentifier) identifier;
+            name = apiIdentifier.getApiName();
+            providerName = apiIdentifier.getProviderName();
+            version = apiIdentifier.getVersion();
+        }
+        if (identifier instanceof APIProductIdentifier) {
+            apiProdIdentifier = (APIProductIdentifier) identifier;
+            name = apiProdIdentifier.getName();
+            providerName = apiProdIdentifier.getProviderName();
+            version = apiProdIdentifier.getVersion();
+        }
         Connection connection = null;
         PreparedStatement prepStmt = null;
         PreparedStatement prepStmt2 = null;
@@ -9660,17 +9679,17 @@ public class ApiMgtDAO {
                 String apiName = resultSet.getString("API_NAME");
 
                 prepStmt2 = connection.prepareStatement(getApiQuery);
-                prepStmt2.setString(1, APIUtil.replaceEmailDomainBack(identifier.getProviderName()));
-                prepStmt2.setString(2, identifier.getApiName());
-                prepStmt2.setString(3, identifier.getVersion());
+                prepStmt2.setString(1, APIUtil.replaceEmailDomainBack(providerName));
+                prepStmt2.setString(2, name);
+                prepStmt2.setString(3, version);
                 resultSet2 = prepStmt2.executeQuery();
 
                 if (resultSet2 != null && resultSet2.next()) {
                     //If the API ID is different from the one being saved
                     if (apiID != resultSet2.getInt("API_ID")) {
                         //Check if the provider name and api name is same.
-                        if (provider.equals(APIUtil.replaceEmailDomainBack(identifier.getProviderName())) && apiName
-                                .equals(identifier.getApiName())) {
+                        if (provider.equals(APIUtil.replaceEmailDomainBack(providerName)) && apiName
+                                .equals(name)) {
 
                             //Return false since this means we're attaching the scope to another version of the API.
                             return false;
@@ -13812,6 +13831,12 @@ public class ApiMgtDAO {
             if (rs.next()) {
                 productId = rs.getInt(1);
             }
+            int tenantId = APIUtil.getTenantIdFromTenantDomain(tenantDomain);
+            if (apiProduct.getScopes() != null) {
+                synchronized (scopeMutex) {
+                    addScopes(apiProduct.getScopes(), apiProduct.getId(), productId, tenantId);
+                }
+            }
             //breaks the flow if product is not added to the db correctly
             if(productId == 0) {
                 throw new APIManagementException("Error while adding API product " + apiProduct.getUuid());
@@ -14006,6 +14031,15 @@ public class ApiMgtDAO {
             ps.executeUpdate();
 
             int productId = getAPIID(product.getId(), conn);
+            int tenantId = APIUtil.getTenantId(username);
+            List<APIProductResource> resources = product.getProductResources();
+            Set<URITemplate> resourcesSet = null;
+            for(APIProductResource resource : resources) {
+                resourcesSet.add(resource.getUriTemplate());
+            }
+            synchronized (scopeMutex) {
+                updateScopes(product.getId(), resourcesSet, tenantId);
+            }
             updateAPIProductResourceMappings(product, productId, conn);
             conn.commit();
         } catch (SQLException e) {
