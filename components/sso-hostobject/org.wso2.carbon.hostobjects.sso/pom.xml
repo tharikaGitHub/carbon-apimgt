@@ -39,10 +39,6 @@
             <artifactId>pax-logging-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>opensaml.wso2</groupId>
-            <artifactId>opensaml2</artifactId>
-        </dependency>
-        <dependency>
             <groupId>commons-codec.wso2</groupId>
             <artifactId>commons-codec</artifactId>
         </dependency>
@@ -57,6 +53,34 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.opensaml</groupId>
+            <artifactId>opensaml-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.opensaml</groupId>
+            <artifactId>opensaml-storage-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.opensaml</groupId>
+            <artifactId>opensaml-saml-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.opensaml</groupId>
+            <artifactId>opensaml-xmlsec-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.opensaml</groupId>
+            <artifactId>opensaml-messaging-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.opensaml</groupId>
+            <artifactId>opensaml-security-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.carbon.identity.saml.common</groupId>
+            <artifactId>org.wso2.carbon.identity.saml.common.util</artifactId>
         </dependency>
         <dependency>
             <groupId>xerces.wso2</groupId>
@@ -86,6 +110,7 @@
                             javax.xml.*;version="0.0.0",
                             org.osgi.framework.*;version="${imp.package.version.osgi.framework}",
                             org.osgi.service.*;version="${imp.package.version.osgi.service}",
+                            org.wso2.carbon.identity.saml.common.util.*; version="${saml.common.util.version.range}",
                             *;resolution:=optional
                         </Import-Package>
                     </instructions>
