@@ -1909,4 +1909,7 @@ public final class APIConstants {
     public static final String DELETED_STATUS = "DELETED";
     public static final String ACTION_STRING = "action";
     public static final String PAYLOAD_STRING = "payload";
+
+    public static final String DEFAULT_SCOPE_TYPE = "OAUTH2";
+    public static final String DEFAULT_BINDING_TYPE = "DEFAULT";
 }
