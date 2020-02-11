@@ -9413,7 +9413,7 @@ public class ApiMgtDAO {
         } finally {
             APIMgtDBUtil.closeAllConnections(prepStmt, connection, null);
         }
-        addScopes(api.getUriTemplates(), api.getId(), apiId, tenantId);
+        addScopes(api.getScopes(), api.getId(), apiId, tenantId);
     }
 
     public HashMap<String, String> getResourceToScopeMapping(APIIdentifier identifier) throws APIManagementException {
