@@ -109,7 +109,7 @@ class ServiceCatalog {
             // return client.apis['Services'].searchServices();
             return searchServices();
         });
-        return promisedServices.then(response => response.body);
+        return promisedServices.then(response => response);
     }
 
     /**
