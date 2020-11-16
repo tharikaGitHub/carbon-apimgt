@@ -68,7 +68,7 @@ public class ServerStartupListener implements ServerStartupObserver {
         //Copy extensible identity jsp files to the relevant extensions folder
         copyToExtensions();
 
-        //Create Service Providers for Admin Publisher and Devportal web apps for the first time during server startup
+        //Create Service Providers for Admin, Publisher and Devportal web apps for the first time during server startup
         try {
             createSpsForPortalApps();
         } catch (APIManagementException e) {
@@ -207,16 +207,21 @@ public class ServerStartupListener implements ServerStartupObserver {
         }
 
         try {
-            systemApplicationDTOAdmin = systemApplicationDAO.getClientCredentialsForApplication(
-                    APIConstants.ServerStartupListenerConstants.ADMIN_CLIENT_APP_NAME,
-                    APIConstants.ServerStartupListenerConstants.SUPER_TENANT_DOMAIN);
-            systemApplicationDTOPublisher = systemApplicationDAO.getClientCredentialsForApplication(
-                    APIConstants.ServerStartupListenerConstants.PUBLISHER_CLIENT_APP_NAME,
-                    APIConstants.ServerStartupListenerConstants.SUPER_TENANT_DOMAIN);
-            systemApplicationDTODevportal = systemApplicationDAO.getClientCredentialsForApplication(
-                    APIConstants.ServerStartupListenerConstants.DEVPORTAL_CLIENT_APP_NAME,
-                    APIConstants.ServerStartupListenerConstants.SUPER_TENANT_DOMAIN);
-
+            try {
+                systemApplicationDTOAdmin = systemApplicationDAO.getClientCredentialsForApplication(
+                        APIConstants.ServerStartupListenerConstants.ADMIN_CLIENT_APP_NAME,
+                        APIConstants.ServerStartupListenerConstants.SUPER_TENANT_DOMAIN);
+                systemApplicationDTOPublisher = systemApplicationDAO.getClientCredentialsForApplication(
+                        APIConstants.ServerStartupListenerConstants.PUBLISHER_CLIENT_APP_NAME,
+                        APIConstants.ServerStartupListenerConstants.SUPER_TENANT_DOMAIN);
+                systemApplicationDTODevportal = systemApplicationDAO.getClientCredentialsForApplication(
+                        APIConstants.ServerStartupListenerConstants.DEVPORTAL_CLIENT_APP_NAME,
+                        APIConstants.ServerStartupListenerConstants.SUPER_TENANT_DOMAIN);
+            } catch (APIMgtDAOException e) {
+                String errorMsg = "Error while retrieving client credentials information for the portal applications";
+                log.error(errorMsg, e);
+                throw new APIManagementException(errorMsg, e);
+            }
             if (systemApplicationDTOAdmin == null) {
                 String callbackUrl = generateCallbackUrl(APIConstants.ServerStartupListenerConstants.ADMIN_APP_CONTEXT,
                         serverUrl);
@@ -260,10 +265,13 @@ public class ServerStartupListener implements ServerStartupObserver {
                         + APIConstants.ServerStartupListenerConstants.DEVPORTAL_CLIENT_APP_NAME);
             }
         } catch (APIMgtDAOException e) {
-            log.error("Error while retrieving or persisting client credentials information for the portal applications",
-                    e);
+            String errorMsg = "Error while persisting client credentials information for the portal applications";
+            log.error(errorMsg, e);
+            throw new APIManagementException(errorMsg, e);
         } catch (APIManagementException e) {
-            log.error("Error while registering the Service Provider for Portal Application", e);
+            String errorMsg = "Error while registering the Service Provider for Portal Application";
+            log.error(errorMsg, e);
+            throw new APIManagementException(errorMsg, e);
         }
     }
 
@@ -316,6 +324,7 @@ public class ServerStartupListener implements ServerStartupObserver {
                 String error = "Error while starting the process:  " + response.getStatusLine().getStatusCode() + " "
                         + response.getStatusLine().getReasonPhrase();
                 log.error(error);
+                throw new APIManagementException(error);
             }
         } catch (APIMgtInternalException e) {
             String errorMsg = "Error while retrieving admin credential information";
