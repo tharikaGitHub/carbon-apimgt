@@ -653,9 +653,9 @@ public final class APIConstants {
     public static final class ServerStartupListenerConstants {
 
         public static final String ADMIN_CLIENT_APP_NAME = "apim_admin_portal";
-        public static final String PUBLISHER_CLIENT_APP_NAME = "apim_publisher_portal";
-        public static final String DEVPORTAL_CLIENT_APP_NAME = "apim_devportal_portal";
-        public static final String ADMIN_APP_CONTEXT = "admin-webapp";
+        public static final String PUBLISHER_CLIENT_APP_NAME = "apim_publisher";
+        public static final String DEVPORTAL_CLIENT_APP_NAME = "apim_devportal";
+        public static final String ADMIN_APP_CONTEXT = "admin";
         public static final String PUBLISHER_APP_CONTEXT = "publisher";
         public static final String DEVPORTAL_APP_CONTEXT = "devportal";
         public static final String GRANT_TYPE = "authorization_code refresh_token";
