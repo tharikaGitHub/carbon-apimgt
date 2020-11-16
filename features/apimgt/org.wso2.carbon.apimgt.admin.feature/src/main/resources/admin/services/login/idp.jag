@@ -18,7 +18,6 @@
  */
 
     var log = new Log();
-    log.debug("Services login DCR request");
     var app = require("/site/public/conf/settings.js").AppConfig.app;
     var appUtils = require("/services/utils.js");
     var utils = Packages.org.wso2.carbon.apimgt.impl.utils.APIUtil;
@@ -44,10 +43,8 @@
     var responseFailed = false;
     var erroLogin = serverUrl + app.context +"/error-pages?code="
 
-    var dcrUrl = appUtils.getLoopbackOrigin() + DCR_URL_SUFFIX;
     var loginCallbackUrl = serverUrl + app.context + LOGIN_CALLBACK_URL_SUFFIX;
-    var logoutCallbackUrl = serverUrl + app.context + LOGOUT_CALLBACK_URL_SUFFIX;
-    var callbackUrl = "regexp=(" + loginCallbackUrl + "|" + logoutCallbackUrl + ")";
+    
     if (settingsResponse.data) {
          var scopes = settingsResponse.data.scopes.join(" ");
     } else {
@@ -69,40 +66,7 @@
     var systemApplicationDAO = new SystemApplicationDAO();
     var clientId;
     systemApplicationDTO = systemApplicationDAO.getClientCredentialsForApplication(ADMIN_CLIENT_APP_NAME, SUPER_TENANT_DOMAIN);
-    var lock = SystemApplicationDAO.getLock();
-    if (systemApplicationDTO !== null) {
-        clientId = systemApplicationDTO.getConsumerKey();
-    } else {
-        try {
-            lock.acquire();
-            systemApplicationDTO = systemApplicationDAO.getClientCredentialsForApplication(ADMIN_CLIENT_APP_NAME, SUPER_TENANT_DOMAIN);
-            if (systemApplicationDTO == null) {
-                var dcrRequestData = {
-                    "callbackUrl": callbackUrl,
-                    "clientName": ADMIN_CLIENT_APP_NAME,
-                    "owner": String(utils.getAdminUsername()),
-                    "grantType": "authorization_code refresh_token",
-                    "saasApp": true
-                };
-
-                var result = post(dcrUrl, JSON.stringify(dcrRequestData), {
-                    "Authorization": authorizationHeader,
-                    "Content-Type": "application/json"
-                }, "json");
-                clientId = result.data.clientId;
-                var clientSecret = result.data.clientSecret;
-
-                var addApplicationKey = systemApplicationDAO
-                                                .addApplicationKey(ADMIN_CLIENT_APP_NAME, clientId, clientSecret, SUPER_TENANT_DOMAIN);
-                if (!addApplicationKey) {
-                    log.error("Error while persisting application information in system application DB table!!");
-                    log.error("Client ID = " + clientId);
-                }
-            }
-        } finally {
-            lock.release();
-        }
-    }
+    clientId = systemApplicationDTO.getConsumerKey();
 
     if (request.getQueryString() == "not-Login") {
         var authRequestParams = "?response_type=code&client_id=" + clientId + "&scope=" + scopes + "&state=" + state + "&redirect_uri=" + loginCallbackUrl+"&prompt=none";

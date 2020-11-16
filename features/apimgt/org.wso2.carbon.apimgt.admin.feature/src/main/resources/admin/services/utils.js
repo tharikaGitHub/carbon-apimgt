@@ -22,7 +22,7 @@ var utils = Packages.org.wso2.carbon.apimgt.impl.utils.APIUtil;
 
 /**
  * Get the loopback (localhost) origin (scheme + hostname + port), This origin is used for making
- * internal(within the web app node), API calls. For example DCR call, Token generation, User Info, Token Introspect,
+ * internal(within the web app node), API calls. For example Token generation, User Info, Token Introspect,
  * Revoke etc.
  */
 var getLoopbackOrigin = function() {
