@@ -86,7 +86,7 @@ const useStyles = makeStyles((theme) => ({
         borderTop: '0px',
         width: '100%',
     },
-    serviceNameStyle: {
+    serviceDisplayNameStyle: {
         color: theme.palette.primary.main,
     },
     tableStyle: {
@@ -139,7 +139,7 @@ function Listing() {
     };
 
     useEffect(() => {
-        setServiceList(getData());
+        getData();
     }, []);
 
     const onDelete = (serviceId) => {
@@ -199,12 +199,16 @@ function Listing() {
                 customBodyRender: (value, tableMeta = this) => {
                     if (tableMeta.rowData) {
                         const dataRow = serviceList[tableMeta.rowIndex];
-                        const serviceDisplayName = tableMeta.rowData[1];
+                        const serviceDisplayName = dataRow.displayName;
+                        const serviceId = dataRow.id;
                         if (dataRow) {
                             return (
-                                <div className={classes.serviceNameStyle}>
+                                <Link
+                                    to={'/service-catalog/' + serviceId + '/overview'}
+                                    className={classes.serviceDisplayNameStyle}
+                                >
                                     <span>{serviceDisplayName}</span>
-                                </div>
+                                </Link>
                             );
                         }
                     }
