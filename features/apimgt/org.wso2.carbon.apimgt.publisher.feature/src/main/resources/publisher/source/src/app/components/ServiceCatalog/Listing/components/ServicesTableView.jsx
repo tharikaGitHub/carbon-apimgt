@@ -28,6 +28,9 @@ import CreateApi from 'AppComponents/ServiceCatalog/CreateApi';
 import MUIDataTable from 'mui-datatables';
 import moment from 'moment';
 import { FormattedMessage } from 'react-intl';
+import {
+    ScopeValidation, resourceMethod, resourcePath, client,
+} from 'AppData/ScopeValidation';
 
 const useStyles = makeStyles((theme) => ({
     contentInside: {
@@ -287,11 +290,18 @@ function ServicesTableView(props) {
                                         serviceUrl={serviceUrl}
                                         usage={usage}
                                     />
-                                    <Delete
-                                        serviceDisplayName={name}
-                                        serviceId={id}
-                                        onDelete={onDelete}
-                                    />
+                                    {/* allowing delete service based on scopes */}
+                                    <ScopeValidation
+                                        resourcePath={resourcePath.SINGLE_SERVICE}
+                                        resourceMethod={resourceMethod.DELETE}
+                                        client={client.SERVICE_CATALOG_CLIENT}
+                                    >
+                                        <Delete
+                                            serviceDisplayName={name}
+                                            serviceId={id}
+                                            onDelete={onDelete}
+                                        />
+                                    </ScopeValidation>
                                 </Box>
                             </>
                         );
