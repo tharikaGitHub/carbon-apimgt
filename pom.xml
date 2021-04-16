@@ -2057,7 +2057,7 @@
         <swagger3.core.version>2.1.5</swagger3.core.version>
         <javax.enterprise.version>2.0</javax.enterprise.version>
         <jaeger.client.version>0.32.0.wso2v4</jaeger.client.version>
-        <zipkin.sender.okhttp3.version>2.12.1</zipkin.sender.okhttp3.version>
+        <zipkin.sender.okhttp3.version>2.16.3</zipkin.sender.okhttp3.version>
         <zipkin.reporter.version>2.12.1</zipkin.reporter.version>
         <brave.opentracing.version>0.32.0</brave.opentracing.version>
         <opentracing.api.version>0.31.0</opentracing.api.version>
