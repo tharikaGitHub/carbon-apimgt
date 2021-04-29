@@ -1,0 +1,91 @@
+version: 2
+updates:
+- package-ecosystem: maven
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: org.wso2.carbon.identity.framework:org.wso2.carbon.user.mgt.common
+    versions:
+    - 5.20.11
+  - dependency-name: org.wso2.carbon.identity.framework:org.wso2.carbon.claim.mgt
+    versions:
+    - 5.17.117
+    - 5.20.11
+  - dependency-name: org.wso2.carbon.identity.framework:org.wso2.carbon.identity.user.profile.stub
+    versions:
+    - 5.17.117
+    - 5.20.11
+  - dependency-name: org.wso2.carbon.identity.framework:org.wso2.carbon.identity.entitlement.stub
+    versions:
+    - 5.17.117
+    - 5.20.11
+  - dependency-name: org.wso2.carbon.identity.framework:org.wso2.carbon.user.mgt.stub
+    versions:
+    - 5.17.117
+    - 5.20.11
+  - dependency-name: org.wso2.carbon.identity.framework:org.wso2.carbon.identity.user.registration.stub
+    versions:
+    - 5.17.117
+    - 5.20.11
+  - dependency-name: org.wso2.carbon.identity.framework:org.wso2.carbon.identity.core
+    versions:
+    - 5.17.117
+    - 5.20.11
+  - dependency-name: org.wso2.carbon.identity.framework:org.wso2.carbon.captcha.mgt
+    versions:
+    - 5.17.117
+    - 5.20.11
+  - dependency-name: org.wso2.carbon.identity.framework:org.wso2.carbon.identity.claim.metadata.mgt.stub
+    versions:
+    - 5.17.117
+    - 5.20.11
+  - dependency-name: org.wso2.carbon.identity.framework:org.wso2.carbon.identity.mgt.stub
+    versions:
+    - 5.17.117
+    - 5.20.11
+  - dependency-name: org.wso2.carbon.identity.framework:org.wso2.carbon.identity.application.mgt.stub
+    versions:
+    - 5.17.117
+    - 5.20.11
+  - dependency-name: org.wso2.maven:carbon-p2-plugin
+    versions:
+    - 5.2.32
+    - 5.2.34
+  - dependency-name: junit:junit
+    versions:
+    - 4.13.1
+  - dependency-name: com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider
+    versions:
+    - 2.11.2
+  - dependency-name: com.fasterxml.jackson.core:jackson-annotations
+    versions:
+    - 2.11.2
+  - dependency-name: com.fasterxml.jackson.datatype:jackson-datatype-guava
+    versions:
+    - 2.11.2
+  - dependency-name: com.fasterxml.jackson.core:jackson-databind
+    versions:
+    - 2.11.2
+  - dependency-name: com.fasterxml.jackson.core:jackson-core
+    versions:
+    - 2.11.2
+  - dependency-name: com.fasterxml.jackson.dataformat:jackson-dataformat-yaml
+    versions:
+    - 2.11.2
+  - dependency-name: io.zipkin.reporter2:zipkin-reporter
+    versions:
+    - 2.15.2
+  - dependency-name: io.zipkin.reporter2:zipkin-sender-okhttp3
+    versions:
+    - 2.15.2
+  - dependency-name: org.apache.maven.plugins:maven-checkstyle-plugin
+    versions:
+    - 3.1.1
+  - dependency-name: org.jacoco:jacoco-maven-plugin
+    versions:
+    - 0.8.4
+  - dependency-name: org.jacoco:org.jacoco.agent
+    versions:
+    - 0.8.4
