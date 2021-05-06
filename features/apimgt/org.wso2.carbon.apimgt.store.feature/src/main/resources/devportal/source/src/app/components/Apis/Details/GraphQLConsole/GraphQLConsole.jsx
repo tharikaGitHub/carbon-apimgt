@@ -25,14 +25,18 @@ import { FormattedMessage } from 'react-intl';
 import { makeStyles } from '@material-ui/core/styles';
 import AuthManager from 'AppData/AuthManager';
 import Icon from '@material-ui/core/Icon';
-import fileDownload from 'js-file-download';
-import converter from 'graphql-to-postman';
+import { Icon as Icons } from '@iconify/react';
+import postmanIcon from '@iconify/icons-simple-icons/postman';
+import Button from '@material-ui/core/Button';
+import worker from 'AppWorkers/graphQLToPostman.worker';
+import WebWorker from 'AppWorkers/workerSetup';
 import GraphQLUI from './GraphQLUI';
 import TryOutController from '../ApiConsole/TryOutController';
 import { ApiContext } from '../ApiContext';
 import Api from '../../../../data/api';
 import Progress from '../../../Shared/Progress';
 
+let graphQLSchema;
 
 const useStyles = makeStyles((theme) => ({
     buttonIcon: {
@@ -58,6 +62,10 @@ const useStyles = makeStyles((theme) => ({
     },
 }));
 
+/**
+ * GraphQL Console
+ * @returns graphQL Console
+ */
 export default function GraphQLConsole() {
     const classes = useStyles();
     const { api } = useContext(ApiContext);
@@ -155,25 +163,20 @@ export default function GraphQLConsole() {
         }
     }
 
-    function grapgQLToPostman(graphQL, URL) {
-        converter.convert({
-            type: 'string',
-            data: graphQL,
-        }, {}, (error, result) => {
-            if (error) {
-                console.log(error);
-            } else {
-                const urlValue = URL.https;
-                const results = result;
-                results.output[0].data.variable[0].value = urlValue;
-                const outputData = results.output[0].data;
-                fileDownload(
-                    JSON.stringify(outputData),
-                    'postman collection',
-                );
-                console.log('Conversion success');
-            }
+    const convert = (schema, urls) => {
+        const workerObj = new WebWorker(worker);
+        workerObj.postMessage([schema, urls]);
+        workerObj.addEventListener('message', (event) => {
+            console.log('Message from worker :' + event.data);
         });
+    };
+
+    /**
+     * Set the GraphQL Schema
+     * @param {*} schema schema
+     */
+    function handleSchema(schema) {
+        graphQLSchema = schema;
     }
 
     if (api == null) {
@@ -238,7 +241,7 @@ export default function GraphQLConsole() {
                     username={username}
                     password={password}
                     setSelectedKeyType={setSelectedKeyType}
-                    convertToPostman={grapgQLToPostman}
+                    convertToPostman={convert}
                     selectedKeyType={selectedKeyType}
                     setKeys={setKeys}
                     setURLs={setURLs}
@@ -249,6 +252,22 @@ export default function GraphQLConsole() {
                     environmentObject={environmentObject}
                     api={api}
                 />
+                <Paper />
+                <Grid container>
+                    <Grid xs={11} item />
+                    <Grid xs={1} item>
+                        <Button size='small' onClick={() => convert(graphQLSchema, URLs)}>
+                            <Icons icon={postmanIcon} width={30} height={30} />
+                            <FormattedMessage
+                                id='Apis.Details.GraphQLConsole.GraphQLConsole.download.postman'
+                                defaultMessage='Postman collection'
+                            />
+
+                        </Button>
+
+                    </Grid>
+
+                </Grid>
             </Paper>
             <Paper className={classes.paper}>
                 <GraphQLUI
@@ -256,6 +275,7 @@ export default function GraphQLConsole() {
                     URLs={URLs}
                     securitySchemeType={securitySchemeType}
                     accessTokenProvider={accessTokenProvider}
+                    handleSchema={handleSchema}
                 />
             </Paper>
         </>

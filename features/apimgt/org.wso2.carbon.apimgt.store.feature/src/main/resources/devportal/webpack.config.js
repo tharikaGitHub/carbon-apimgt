@@ -67,6 +67,7 @@ module.exports = function (env, argv) {
                 AppData: path.resolve(__dirname, 'source/src/app/data/'),
                 AppComponents: path.resolve(__dirname, 'source/src/app/components/'),
                 AppTests: path.resolve(__dirname, 'source/Tests/'),
+                AppWorkers: path.resolve(__dirname, 'source/src/app/webWorkers/'),
                 react: fs.existsSync('../../../../../node_modules/react')
                     ? path.resolve('../../../../../node_modules/react') : path.resolve('../node_modules/react'),
                 reactDom: fs.existsSync('../../../../../node_modules/react-dom')
@@ -105,6 +106,10 @@ module.exports = function (env, argv) {
         },
         module: {
             rules: [
+                {
+                    test: /\.worker\.js$/,
+                    use: { loader: 'worker-loader' },
+                },
                 {
                     test: /\.(js|jsx)$/,
                     exclude: /node_modules/,

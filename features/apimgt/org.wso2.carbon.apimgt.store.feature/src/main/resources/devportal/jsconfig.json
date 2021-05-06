@@ -8,6 +8,7 @@
             "AppComponents/*": ["source/src/app/components/*"],
             "AppData/*": ["source/src/app/data/*"],
             "AppTests/*": ["source/Tests/*"],
+            "AppWorkers/*": ["source/src/app/webWorkers/*"]
         }
     },
     "include": ["./source"],

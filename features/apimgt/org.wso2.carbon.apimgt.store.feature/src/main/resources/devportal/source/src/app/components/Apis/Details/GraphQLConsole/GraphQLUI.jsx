@@ -46,7 +46,7 @@ export default function GraphQLUI(props) {
         URLs,
         securitySchemeType,
         accessTokenProvider,
-
+        handleSchema,
     } = props;
     const { api } = useContext(ApiContext);
     const [schema, setSchema] = useState(null);
@@ -63,6 +63,7 @@ export default function GraphQLUI(props) {
             .then((res) => {
                 const graphqlSchemaObj = buildSchema(res.data);
                 setSchema(graphqlSchemaObj);
+                handleSchema(res.data);
             });
     }, []);
 
