@@ -28,8 +28,7 @@ import Icon from '@material-ui/core/Icon';
 import { Icon as Icons } from '@iconify/react';
 import postmanIcon from '@iconify/icons-simple-icons/postman';
 import Button from '@material-ui/core/Button';
-import worker from 'AppWorkers/graphQLToPostman.worker';
-import WebWorker from 'AppWorkers/workerSetup';
+import WebWorker from 'AppWorkers/graphql.worker';
 import GraphQLUI from './GraphQLUI';
 import TryOutController from '../ApiConsole/TryOutController';
 import { ApiContext } from '../ApiContext';
@@ -164,11 +163,11 @@ export default function GraphQLConsole() {
     }
 
     const convert = (schema, urls) => {
-        const workerObj = new WebWorker(worker);
+        const workerObj = new WebWorker();
         workerObj.postMessage([schema, urls]);
-        workerObj.addEventListener('message', (event) => {
-            console.log('Message from worker :' + event.data);
-        });
+        workerObj.onmessage = (e) => {
+            console.log('Message from worker :' + e.data);
+        };
     };
 
     /**
