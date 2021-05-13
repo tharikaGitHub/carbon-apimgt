@@ -892,7 +892,7 @@ public class ApiMgtDAO {
         }
     }
 
-    public void removeAllSubscriptions(APIIdentifier apiIdentifier) throws APIManagementException {
+    public void removeAllSubscriptions(String uuid) throws APIManagementException {
 
         Connection conn = null;
         PreparedStatement ps = null;
@@ -901,7 +901,7 @@ public class ApiMgtDAO {
         try {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
-            apiId = getAPIID(apiIdentifier, conn);
+            apiId = getAPIID(uuid, conn);
 
             String sqlQuery = SQLConstants.REMOVE_ALL_SUBSCRIPTIONS_SQL;
 
@@ -3013,7 +3013,7 @@ public class ApiMgtDAO {
         return applicationId;
     }
 
-    public void addRating(Identifier id, int rating, String user) throws APIManagementException {
+    public void addRating(String id, int rating, String user) throws APIManagementException {
 
         Connection conn = null;
         try {
@@ -3037,12 +3037,12 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param identifier Identifier
+     * @param uuid API uuid
      * @param rating     Rating
      * @param userId     User Id
      * @throws APIManagementException if failed to add Rating
      */
-    public void addOrUpdateRating(Identifier identifier, int rating, String userId, Connection conn)
+    public void addOrUpdateRating(String uuid, int rating, String userId, Connection conn)
             throws APIManagementException, SQLException {
 
         PreparedStatement ps = null;
@@ -3060,9 +3060,9 @@ public class ApiMgtDAO {
                 throw new APIManagementException(msg);
             }
             int id;
-            id = getAPIID(identifier, conn);
+            id = getAPIID(uuid, conn);
             if (id == -1) {
-                String msg = "Could not load API record for: " + identifier.getName();
+                String msg = "Could not load API record for API with UUID : " + uuid;
                 log.error(msg);
                 throw new APIManagementException(msg);
             }
@@ -3109,14 +3109,14 @@ public class ApiMgtDAO {
         }
     }
 
-    public void removeAPIRating(Identifier id, String user) throws APIManagementException {
+    public void removeAPIRating(String uuid, String user) throws APIManagementException {
 
         Connection conn = null;
         try {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
 
-            removeAPIRating(id, user, conn);
+            removeAPIRating(uuid, user, conn);
 
             conn.commit();
         } catch (SQLException e) {
@@ -3134,11 +3134,11 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param identifier Identifier
+     * @param uuid API uuid
      * @param userId     User Id
      * @throws APIManagementException if failed to remove API user Rating
      */
-    public void removeAPIRating(Identifier identifier, String userId, Connection conn)
+    public void removeAPIRating(String uuid, String userId, Connection conn)
             throws APIManagementException, SQLException {
 
         PreparedStatement ps = null;
@@ -3158,9 +3158,9 @@ public class ApiMgtDAO {
             }
             //Get API Id
             int id = -1;
-            id = getAPIID(identifier, conn);
+            id = getAPIID(uuid, conn);
             if (id == -1) {
-                String msg = "Could not load API record for: " + identifier.getName();
+                String msg = "Could not load API record for API with UUID: " + uuid;
                 log.error(msg);
                 throw new APIManagementException(msg);
             }
@@ -3192,7 +3192,7 @@ public class ApiMgtDAO {
         }
     }
 
-    public int getUserRating(Identifier id, String user) throws APIManagementException {
+    public int getUserRating(String uuid, String user) throws APIManagementException {
 
         Connection conn = null;
         int userRating = 0;
@@ -3200,7 +3200,7 @@ public class ApiMgtDAO {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
 
-            userRating = getUserRating(id, user, conn);
+            userRating = getUserRating(uuid, user, conn);
 
             conn.commit();
         } catch (SQLException e) {
@@ -3219,11 +3219,11 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param identifier Identifier
+     * @param uuid API uuid
      * @param userId     User Id
      * @throws APIManagementException if failed to get User API Rating
      */
-    public int getUserRating(Identifier identifier, String userId, Connection conn)
+    public int getUserRating(String uuid, String userId, Connection conn)
             throws APIManagementException, SQLException {
 
         PreparedStatement ps = null;
@@ -3241,9 +3241,9 @@ public class ApiMgtDAO {
             }
             //Get API Id
             int id = -1;
-            id = getAPIID(identifier, conn);
+            id = getAPIID(uuid, conn);
             if (id == -1) {
-                String msg = "Could not load API record for: " + identifier.getName();
+                String msg = "Could not load API record for API with UUID : " + uuid;
                 log.error(msg);
                 throw new APIManagementException(msg);
             }
@@ -3269,11 +3269,11 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param identifier Identifier
+     * @param uuid API uuid
      * @param user       User name
      * @throws APIManagementException if failed to get user API Ratings
      */
-    public JSONObject getUserRatingInfo(Identifier identifier, String user) throws APIManagementException {
+    public JSONObject getUserRatingInfo(String uuid, String user) throws APIManagementException {
 
         Connection conn = null;
         JSONObject userRating = null;
@@ -3281,7 +3281,7 @@ public class ApiMgtDAO {
             conn = APIMgtDBUtil.getConnection();
             conn.setAutoCommit(false);
 
-            userRating = getUserRatingInfo(identifier, user, conn);
+            userRating = getUserRatingInfo(uuid, user, conn);
 
             conn.commit();
         } catch (SQLException e) {
@@ -3300,12 +3300,12 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param identifier Identifier
+     * @param uuid API uuid
      * @param userId     User Id
      * @param conn       Database connection
      * @throws APIManagementException if failed to get user API Ratings
      */
-    private JSONObject getUserRatingInfo(Identifier identifier, String userId, Connection conn)
+    private JSONObject getUserRatingInfo(String uuid, String userId, Connection conn)
             throws APIManagementException, SQLException {
 
         PreparedStatement ps = null;
@@ -3325,11 +3325,11 @@ public class ApiMgtDAO {
                 throw new APIManagementException(msg);
             }
             //Get API Id
-            id = getAPIID(identifier, conn);
+            id = getAPIID(uuid, conn);
 
             String sqlQuery = SQLConstants.GET_API_RATING_INFO_SQL;
             if (id == -1) {
-                String msg = "Could not load API record for: " + identifier.getName();
+                String msg = "Could not load API record for API with UUID: " + uuid;
                 log.error(msg);
                 throw new APIManagementException(msg);
             }
@@ -3358,10 +3358,10 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param apiId API Identifier
+     * @param apiId API uuid
      * @throws APIManagementException if failed to get API Ratings
      */
-    public JSONArray getAPIRatings(Identifier apiId) throws APIManagementException {
+    public JSONArray getAPIRatings(String apiId) throws APIManagementException {
 
         Connection conn = null;
         JSONArray apiRatings = null;
@@ -3388,11 +3388,11 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param identifier Identifier
+     * @param uuid API uuid
      * @param conn       Database connection
      * @throws APIManagementException if failed to get API Ratings
      */
-    private JSONArray getAPIRatings(Identifier identifier, Connection conn)
+    private JSONArray getAPIRatings(String uuid, Connection conn)
             throws APIManagementException, SQLException {
 
         PreparedStatement ps = null;
@@ -3406,9 +3406,9 @@ public class ApiMgtDAO {
         int subscriberId = -1;
         try {
             //Get API Id
-            id = getAPIID(identifier, conn);
+            id = getAPIID(uuid, conn);
             if (id == -1) {
-                String msg = "Could not load API record for: " + identifier.getName();
+                String msg = "Could not load API record for API with UUID: " + uuid;
                 log.error(msg);
                 throw new APIManagementException(msg);
             }
@@ -3449,7 +3449,7 @@ public class ApiMgtDAO {
         return ratingArray;
     }
 
-    public float getAverageRating(Identifier apiId) throws APIManagementException {
+    public float getAverageRating(String apiId) throws APIManagementException {
 
         Connection conn = null;
         float avrRating = 0;
@@ -3514,10 +3514,10 @@ public class ApiMgtDAO {
     }
 
     /**
-     * @param identifier Identifier
+     * @param uuid API uuid
      * @throws APIManagementException if failed to add Application
      */
-    public float getAverageRating(Identifier identifier, Connection conn)
+    public float getAverageRating(String uuid, Connection conn)
             throws APIManagementException, SQLException {
 
         PreparedStatement ps = null;
@@ -3526,9 +3526,9 @@ public class ApiMgtDAO {
         try {
             //Get API Id
             int apiId;
-            apiId = getAPIID(identifier, conn);
+            apiId = getAPIID(uuid, conn);
             if (apiId == -1) {
-                String msg = "Could not load API record for: " + identifier.getName();
+                String msg = "Could not load API record for API with UUID: " + uuid;
                 log.error(msg);
                 return Float.NEGATIVE_INFINITY;
             }
@@ -5050,11 +5050,11 @@ public class ApiMgtDAO {
         return subscriber;
     }
 
-    public void recordAPILifeCycleEvent(APIIdentifier apiIdentifier, String oldStatus, String newStatus, String userId,
+    public void recordAPILifeCycleEvent(String uuid, String oldStatus, String newStatus, String userId,
                                         int tenantId) throws APIManagementException {
 
         try (Connection conn = APIMgtDBUtil.getConnection()) {
-            int apiId = getAPIID(apiIdentifier, conn);
+            int apiId = getAPIID(uuid, conn);
             conn.setAutoCommit(false);
             try {
                 recordAPILifeCycleEvent(apiId, oldStatus, newStatus, userId, tenantId, conn);
@@ -6375,7 +6375,7 @@ public class ApiMgtDAO {
         try (Connection connection = APIMgtDBUtil.getConnection();
              PreparedStatement prepStmt = connection.prepareStatement(deleteOldMappingsQuery)) {
             connection.setAutoCommit(false);
-            apiId = getAPIID(api.getId(), connection);
+            apiId = getAPIID(api.getUuid(), connection);
             prepStmt.setInt(1, apiId);
             try {
                 prepStmt.execute();
@@ -6393,11 +6393,11 @@ public class ApiMgtDAO {
     /**
      * Get resource (URI Template) to scope mappings of the given API.
      *
-     * @param identifier API Identifier
+     * @param uuid API uuid
      * @return Map of URI template ID to Scope Keys
      * @throws APIManagementException if an error occurs while getting resource to scope mapping of the API
      */
-    public HashMap<Integer, Set<String>> getResourceToScopeMapping(APIIdentifier identifier)
+    public HashMap<Integer, Set<String>> getResourceToScopeMapping(String uuid)
             throws APIManagementException {
 
         Connection conn = null;
@@ -6407,7 +6407,7 @@ public class ApiMgtDAO {
         int apiId;
         try {
             String sqlQuery = SQLConstants.GET_RESOURCE_TO_SCOPE_MAPPING_SQL;
-            apiId = getAPIID(identifier, conn);
+            apiId = getAPIID(uuid, conn);
 
             conn = APIMgtDBUtil.getConnection();
             ps = conn.prepareStatement(sqlQuery);
@@ -6797,7 +6797,7 @@ public class ApiMgtDAO {
             }
             String serviceKey = api.getServiceInfo("key");
             if (StringUtils.isNotEmpty(serviceKey)) {
-                int apiId = getAPIID(api.getId());
+                int apiId = getAPIID(api.getUuid());
                 updateAPIServiceMapping(apiId, serviceKey, api.getServiceInfo("md5"), connection);
             }
             connection.commit();
@@ -6816,24 +6816,35 @@ public class ApiMgtDAO {
         }
     }
 
-    public int getAPIID(Identifier apiId) throws APIManagementException {
-
-        PreparedStatement prepStmt = null;
-        ResultSet rs = null;
-
+    public int getAPIID(String uuid) throws APIManagementException {
         int id = -1;
-        String getAPIQuery = SQLConstants.GET_API_ID_SQL;
-
-        if (apiId instanceof APIProductIdentifier) {
-            getAPIQuery = SQLConstants.GET_API_PRODUCT_ID_SQL;
-        }
-
         try {
             try (Connection connection = APIMgtDBUtil.getConnection()) {
-                return getAPIID(apiId, connection);
+                return getAPIID(uuid, connection);
             }
         } catch (SQLException e) {
-            handleException("Error while locating API: " + apiId + " from the database", e);
+            handleException("Error while locating API with UUID : " + uuid + " from the database", e);
+        }
+        return id;
+    }
+
+    public int getAPIID(String uuid, Connection connection) throws APIManagementException, SQLException {
+
+        int id = -1;
+        String getAPIQuery = SQLConstants.GET_API_ID_SQL_NEW;
+
+        try (PreparedStatement prepStmt = connection.prepareStatement(getAPIQuery)) {
+            prepStmt.setString(1, uuid);
+            try (ResultSet rs = prepStmt.executeQuery()) {
+                if (rs.next()) {
+                    id = rs.getInt("API_ID");
+                }
+                if (id == -1) {
+                    String msg = "Unable to find the API with UUID : " + uuid + " in the database";
+                    log.error(msg);
+                    throw new APIManagementException(msg);
+                }
+            }
         }
         return id;
     }
