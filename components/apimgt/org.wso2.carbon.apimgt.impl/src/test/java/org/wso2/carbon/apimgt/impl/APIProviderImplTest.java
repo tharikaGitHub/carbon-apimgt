@@ -142,14 +142,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.*;
 
 import javax.cache.Caching;
 import javax.xml.namespace.QName;
@@ -412,6 +405,7 @@ public class APIProviderImplTest {
         API api = new API(apiId);
         api.setContext("/test");
         api.setStatus(APIConstants.CREATED);
+        api.setUuid(UUID.randomUUID().toString());
         APIPublisher publisher = Mockito.mock(APIPublisher.class);
 
         Set<APIStore> apiStores = new HashSet<APIStore>();
@@ -432,7 +426,7 @@ public class APIProviderImplTest {
 
         PowerMockito.when(APIUtil.getExternalStores(-1)).thenReturn(apiStores);
         PowerMockito.when(APIUtil.isAPIsPublishToExternalAPIStores(-1)).thenReturn(true);
-        Mockito.when(apimgtDAO.getExternalAPIStoresDetails(apiId)).thenReturn(apiStores);
+        Mockito.when(apimgtDAO.getExternalAPIStoresDetails(api.getUuid())).thenReturn(apiStores);
         Mockito.when(publisher.isAPIAvailable(api, apiStore)).thenReturn(true);
         Mockito.when(publisher.isAPIAvailable(api, apiStore1)).thenReturn(true);
         Mockito.when(APIUtil.getExternalAPIStore(apiStore.getName(), -1)).thenReturn(apiStore);
@@ -444,6 +438,7 @@ public class APIProviderImplTest {
     public void testGetExternalAPIStores() throws APIManagementException {
         APIProviderImplWrapper apiProvider = new APIProviderImplWrapper(apimgtDAO, scopesDAO);
         APIIdentifier apiId = new APIIdentifier("admin", "API1", "1.0.1");
+        String uuid = UUID.randomUUID().toString();
         PowerMockito.when(APIUtil.isAPIsPublishToExternalAPIStores(-1)).thenReturn(true, false);
         Set<APIStore> apiStores = new HashSet<APIStore>();
         APIStore apiStore = new APIStore();
@@ -455,10 +450,10 @@ public class APIProviderImplTest {
         apiStore1.setDisplayName("testName1");
         apiStore1.setName("testStoreName1");
         apiStores.add(apiStore1);
-        Mockito.when(apimgtDAO.getExternalAPIStoresDetails(apiId)).thenReturn(apiStores);
-        Assert.assertNotNull(apiProvider.getExternalAPIStores(apiId));
+        Mockito.when(apimgtDAO.getExternalAPIStoresDetails(uuid)).thenReturn(apiStores);
+        Assert.assertNotNull(apiProvider.getExternalAPIStores(uuid));
         // return null
-        Assert.assertNull(apiProvider.getExternalAPIStores(apiId));
+        Assert.assertNull(apiProvider.getExternalAPIStores(uuid));
     }
 
     @Test
