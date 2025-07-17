@@ -2071,7 +2071,8 @@ public class ApiMgtDAO {
      * @throws APIManagementException if failed to get subscribers for given provider
      */
     public Set<Subscriber> getSubscribersOfAPIWithoutDuplicates(Identifier identifier,
-                                                                List<String> subscriberMap) throws APIManagementException {
+                                                                List<String> subscriberMap)
+            throws APIManagementException {
 
         Set<Subscriber> subscribers = new HashSet<>();
 
@@ -2711,7 +2712,8 @@ public class ApiMgtDAO {
      * @throws org.wso2.carbon.apimgt.api.APIManagementException if failed to get
      *                                                           UserApplicationAPIUsage for given provider
      */
-    public UserApplicationAPIUsage[] getAllAPIProductUsageByProvider(String providerName) throws APIManagementException {
+    public UserApplicationAPIUsage[] getAllAPIProductUsageByProvider(String providerName)
+            throws APIManagementException {
 
         try (Connection connection = APIMgtDBUtil.getConnection();
              PreparedStatement ps =
@@ -3872,7 +3874,8 @@ public class ApiMgtDAO {
             }
 
         } catch (SQLException e) {
-            handleException("Error while getting application group combination data for application: " + applicationName, e);
+            handleException("Error while getting application group combination data for application: "
+                    + applicationName, e);
         }
         return false;
 
@@ -3886,7 +3889,8 @@ public class ApiMgtDAO {
      * @return true if application is available for the subscriber
      * @throws APIManagementException if failed to get applications for given subscriber
      */
-    public boolean isApplicationOwnedBySubscriber(String appName, String username, String organization) throws APIManagementException {
+    public boolean isApplicationOwnedBySubscriber(String appName, String username, String organization)
+            throws APIManagementException {
 
         if (username == null) {
             return false;
@@ -4021,7 +4025,8 @@ public class ApiMgtDAO {
         return appName;
     }
 
-    public int getAllApplicationCount(Subscriber subscriber, String groupingId, String search) throws APIManagementException {
+    public int getAllApplicationCount(Subscriber subscriber, String groupingId, String search)
+            throws APIManagementException {
 
         Connection connection = null;
         PreparedStatement prepStmt = null;
@@ -4145,8 +4150,8 @@ public class ApiMgtDAO {
      * @throws APIManagementException
      */
     public Application[] getApplicationsWithPagination(Subscriber subscriber, String groupingId, int start,
-                                                       int offset, String search, String sortColumn, String sortOrder, String organization,
-                                                       String sharedOrganization)
+                                                       int offset, String search, String sortColumn, String sortOrder,
+                                                       String organization, String sharedOrganization)
             throws APIManagementException {
 
         Connection connection = null;
@@ -4285,7 +4290,8 @@ public class ApiMgtDAO {
 
                 // Get custom attributes of application
                 Map<String, String> applicationAttributes = getApplicationAttributes(connection, applicationId);
-                application.setSubOrganization(applicationAttributes.get(APIConstants.ApplicationAttributes.USER_ORGANIZATION));
+                application.setSubOrganization(applicationAttributes
+                        .get(APIConstants.ApplicationAttributes.USER_ORGANIZATION));
                 applicationAttributes.remove(APIConstants.ApplicationAttributes.USER_ORGANIZATION);
                 application.setApplicationAttributes(applicationAttributes);
                 application.setSharedOrganization(rs.getString("SHARED_ORGANIZATION"));
@@ -4364,8 +4370,8 @@ public class ApiMgtDAO {
                 sqlQuery = sqlQuery.replaceAll("NAME", "cast(NAME as varchar(100)) collate " +
                         "SQL_Latin1_General_CP1_CI_AS as NAME");
                 blockingFilerSql = " select distinct x.*,bl.ENABLED from ( " + sqlQuery + " )x left join " +
-                        "AM_BLOCK_CONDITIONS bl on  ( bl.TYPE = 'APPLICATION' AND bl.BLOCK_CONDITION = (x.USER_ID + ':') + x" +
-                        ".name)";
+                        "AM_BLOCK_CONDITIONS bl on  ( bl.TYPE = 'APPLICATION' AND " +
+                        "bl.BLOCK_CONDITION = (x.USER_ID + ':') + x.name)";
             } else {
                 blockingFilerSql = " select distinct x.*,bl.ENABLED from ( " + sqlQuery
                         + " )x left join AM_BLOCK_CONDITIONS bl on  ( bl.TYPE = 'APPLICATION' AND bl.BLOCK_CONDITION = "
@@ -4588,7 +4594,8 @@ public class ApiMgtDAO {
                 try {
                     prepStmt.close();
                 } catch (SQLException e) {
-                    log.warn("Database error. Could not close Statement. Continuing with others." + e.getMessage(), e);
+                    log.warn("Database error. Could not close Statement. Continuing with others." +
+                            e.getMessage(), e);
                 }
             }
         }
@@ -4750,7 +4757,8 @@ public class ApiMgtDAO {
             deleteSubscription.execute();
 
             if (log.isDebugEnabled()) {
-                log.debug("Subscription details are deleted successfully for Application - " + application.getName());
+                log.debug("Subscription details are deleted successfully for Application - "
+                        + application.getName());
             }
 
             deleteDomainApp.executeBatch();
@@ -4948,7 +4956,8 @@ public class ApiMgtDAO {
      * @param keyManagerName
      * @throws APIManagementException if failed to delete the record.
      */
-    public void deleteApplicationRegistration(int applicationId, String tokenType, String keyManagerName) throws APIManagementException {
+    public void deleteApplicationRegistration(int applicationId, String tokenType, String keyManagerName)
+            throws APIManagementException {
 
         Connection connection = null;
         PreparedStatement ps = null;
@@ -5168,7 +5177,8 @@ public class ApiMgtDAO {
      * @throws APIManagementException APIManagementException
      */
     public List<SubscribedAPI> makeKeysForwardCompatibleForNewAPIVersion(ApiTypeWrapper apiTypeWrapper,
-                                                                         List<API> oldAPIVersions) throws APIManagementException {
+                                                                         List<API> oldAPIVersions)
+            throws APIManagementException {
         int versionCount;
         List<SubscribedAPI> subscribedAPISet = new ArrayList<>();
 
@@ -5256,7 +5266,8 @@ public class ApiMgtDAO {
 
     private void retrieveSubscriptionDataOfAPIs(ApiTypeWrapper apiTypeWrapper, List<API> oldAPIVersions,
                                                 int versionCount, List<SubscribedAPI> subscribedAPISet,
-                                                Connection connection, PreparedStatement prepStmt) throws SQLException, APIManagementException {
+                                                Connection connection, PreparedStatement prepStmt)
+            throws SQLException, APIManagementException {
         ApiTypeWrapper oldApiTypeWrapperCopy;
         try (ResultSet rs = prepStmt.executeQuery()) {
             List<SubscriptionInfo> subscriptionData = new ArrayList<SubscriptionInfo>();
@@ -5282,8 +5293,10 @@ public class ApiMgtDAO {
     }
 
     private void retrieveSubscriptionDataOfAPIProducts(ApiTypeWrapper apiTypeWrapper,
-                                                       List<APIProduct> oldAPIProductVersions, int versionCount, List<SubscribedAPI> subscribedAPISet,
-                                                       Connection connection, PreparedStatement prepStmt) throws SQLException, APIManagementException {
+                                                       List<APIProduct> oldAPIProductVersions, int versionCount,
+                                                       List<SubscribedAPI> subscribedAPISet,
+                                                       Connection connection, PreparedStatement prepStmt)
+            throws SQLException, APIManagementException {
         ApiTypeWrapper oldApiTypeWrapperCopy;
         try (ResultSet rs = prepStmt.executeQuery()) {
             List<SubscriptionInfo> subscriptionData = new ArrayList<SubscriptionInfo>();
@@ -5309,7 +5322,8 @@ public class ApiMgtDAO {
     }
 
     private void addSubscriptionData(ApiTypeWrapper apiTypeWrapper, List<SubscribedAPI> subscribedAPISet,
-                                     Connection connection, ApiTypeWrapper oldApiTypeWrapperCopy, List<SubscriptionInfo> subscriptionData,
+                                     Connection connection, ApiTypeWrapper oldApiTypeWrapperCopy,
+                                     List<SubscriptionInfo> subscriptionData,
                                      List<Integer> addedApplications) throws SQLException, APIManagementException {
         for (SubscriptionInfo info : subscriptionData) {
             try {
@@ -5383,7 +5397,8 @@ public class ApiMgtDAO {
     private int addSubscription(Connection connection, ApiTypeWrapper apiTypeWrapper, Application application,
                                 String subscriptionStatus, String subscriber) throws APIManagementException,
             SQLException {
-        return addSubscription(connection, apiTypeWrapper, application, subscriptionStatus, subscriber, UUID.randomUUID().toString());
+        return addSubscription(connection, apiTypeWrapper, application, subscriptionStatus, subscriber,
+                UUID.randomUUID().toString());
     }
 
     private int addSubscription(Connection connection, ApiTypeWrapper apiTypeWrapper, Application application,
@@ -5434,7 +5449,8 @@ public class ApiMgtDAO {
                         log.error(String.format("Subscription already exists for API/API Prouct %s in Application %s"
                                 , apiTypeWrapper.getName(), application.getName()));
                         throw new SubscriptionAlreadyExistingException(String.format("Subscription already exists for" +
-                                " API/API Prouct %s in Application %s", apiTypeWrapper.getName(), application.getName()));
+                                " API/API Prouct %s in Application %s", apiTypeWrapper.getName(),
+                                application.getName()));
 
                     } else if (APIConstants.SubscriptionStatus.UNBLOCKED.equals(subStatus) && APIConstants
                             .SubscriptionCreatedStatus.UN_SUBSCRIBE.equals(subCreationStatus)) {
@@ -5508,7 +5524,8 @@ public class ApiMgtDAO {
      * @throws APIManagementException if failed to get API Names
      */
     public List<String> getAPIVersionsMatchingApiNameAndOrganization(String apiName, String username,
-                                                                     String organization) throws APIManagementException {
+                                                                     String organization)
+            throws APIManagementException {
 
         List<String> versionList = new ArrayList<String>();
         try (Connection connection = APIMgtDBUtil.getConnection();
@@ -6166,7 +6183,8 @@ public class ApiMgtDAO {
             String queryDefaultVersionAdd = SQLConstants.ADD_API_DEFAULT_VERSION_SQL;
             try (PreparedStatement prepStmtDefVersionAdd = connection.prepareStatement(queryDefaultVersionAdd)) {
                 prepStmtDefVersionAdd.setString(1, apiTypeWrapper.getId().getName());
-                prepStmtDefVersionAdd.setString(2, APIUtil.replaceEmailDomainBack(apiTypeWrapper.getId().getProviderName()));
+                prepStmtDefVersionAdd.setString(2, APIUtil
+                        .replaceEmailDomainBack(apiTypeWrapper.getId().getProviderName()));
                 prepStmtDefVersionAdd.setString(3, apiTypeWrapper.getId().getVersion());
 
                 if (deploymentAvailable) {
@@ -6395,8 +6413,10 @@ public class ApiMgtDAO {
             String whereClauseWithMultiGroupIdCaseInSensitive =
                     "  WHERE  (((APP.APPLICATION_ID IN (SELECT APPLICATION_ID  FROM "
                             + "AM_APPLICATION_GROUP_MAPPING WHERE GROUP_ID IN ($params) AND TENANT = ?)) "
-                            + "OR (APP.APPLICATION_ID IN (SELECT APPLICATION_ID FROM AM_APPLICATION WHERE GROUP_ID = ?))) "
-                            + "AND LOWER(SUB.USER_ID) = LOWER(?)) AND APP.NAME = ? AND SUB.SUBSCRIBER_ID = APP.SUBSCRIBER_ID";
+                            + "OR (APP.APPLICATION_ID IN (SELECT APPLICATION_ID FROM AM_APPLICATION " +
+                            "WHERE GROUP_ID = ?))) "
+                            + "AND LOWER(SUB.USER_ID) = LOWER(?)) AND APP.NAME = ? AND SUB.SUBSCRIBER_ID = " +
+                            "APP.SUBSCRIBER_ID";
 
             if (groupId != null && !"null".equals(groupId) && !groupId.isEmpty()) {
                 if (multiGroupAppSharingEnabled) {
@@ -19633,7 +19653,8 @@ public class ApiMgtDAO {
      * @return List<APIRevisionDeployment> object
      * @throws APIManagementException if an error occurs while retrieving revision deployment mapping details
      */
-    public List<APIRevisionDeployment> getAPIRevisionDeploymentByRevisionUUID(String revisionUUID) throws APIManagementException {
+    public List<APIRevisionDeployment> getAPIRevisionDeploymentByRevisionUUID(String revisionUUID)
+            throws APIManagementException {
 
         List<APIRevisionDeployment> apiRevisionDeploymentList = new ArrayList<>();
         try (Connection connection = APIMgtDBUtil.getConnection();
@@ -19670,12 +19691,15 @@ public class ApiMgtDAO {
      * @throws APIManagementException if an error occurs while retrieving revision deployment mapping details
      */
     public List<APIRevisionDeployment> getAPIRevisionDeploymentsByWorkflowStatusAndApiUUID(String apiUUID,
-                                                                                           String workflowStatus) throws APIManagementException {
+                                                                                           String workflowStatus)
+            throws APIManagementException {
 
         List<APIRevisionDeployment> apiRevisionDeploymentList = new ArrayList<>();
         try (Connection connection = APIMgtDBUtil.getConnection();
              PreparedStatement statement = connection.prepareStatement(
-                     SQLConstants.APIRevisionSqlConstants.GET_API_REVISION_DEPLOYMENT_MAPPINGS_BY_REVISION_STATUS_AND_API_UUID)) {
+                     SQLConstants
+                             .APIRevisionSqlConstants
+                             .GET_API_REVISION_DEPLOYMENT_MAPPINGS_BY_REVISION_STATUS_AND_API_UUID)) {
             statement.setString(1, workflowStatus);
             statement.setString(2, apiUUID);
             try (ResultSet rs = statement.executeQuery()) {
@@ -19729,10 +19753,12 @@ public class ApiMgtDAO {
      * @return List<APIRevisionDeployment> object
      * @throws APIManagementException if an error occurs while retrieving revision deployment mapping details
      */
-    private boolean isDeploymentAvailableByAPIUUID(Connection connection, String apiUUID) throws APIManagementException {
+    private boolean isDeploymentAvailableByAPIUUID(Connection connection, String apiUUID)
+            throws APIManagementException {
 
         try (PreparedStatement statement =
-                     connection.prepareStatement(SQLConstants.APIRevisionSqlConstants.CHECK_API_REVISION_DEPLOYMENT_AVAILABILITY_BY_API_UUID)) {
+                     connection.prepareStatement(SQLConstants.APIRevisionSqlConstants
+                             .CHECK_API_REVISION_DEPLOYMENT_AVAILABILITY_BY_API_UUID)) {
             statement.setString(1, apiUUID);
             try (ResultSet rs = statement.executeQuery()) {
                 if (rs.next()) {
@@ -19752,7 +19778,8 @@ public class ApiMgtDAO {
      * @return List<APIRevisionDeployment> object
      * @throws APIManagementException if an error occurs while retrieving revision deployment mapping details
      */
-    public List<APIRevisionDeployment> getAPIRevisionDeploymentsByApiUUID(String apiUUID) throws APIManagementException {
+    public List<APIRevisionDeployment> getAPIRevisionDeploymentsByApiUUID(String apiUUID)
+            throws APIManagementException {
 
         List<APIRevisionDeployment> apiRevisionDeploymentList = new ArrayList<>();
         try (Connection connection = APIMgtDBUtil.getConnection();
@@ -19828,7 +19855,8 @@ public class ApiMgtDAO {
                 connection.setAutoCommit(false);
                 // Remove an entry from AM_DEPLOYMENT_REVISION_MAPPING table
                 try (PreparedStatement statement = connection
-                        .prepareStatement(SQLConstants.APIRevisionSqlConstants.REMOVE_API_REVISION_DEPLOYMENT_MAPPING)) {
+                        .prepareStatement(SQLConstants
+                                .APIRevisionSqlConstants.REMOVE_API_REVISION_DEPLOYMENT_MAPPING)) {
                     for (APIRevisionDeployment apiRevisionDeployment : apiRevisionDeployments) {
                         statement.setString(1, apiRevisionDeployment.getDeployment());
                         statement.setString(2, apiRevisionId);
@@ -20070,8 +20098,8 @@ public class ApiMgtDAO {
                         if (urlMappingExisting != null && urlMappingExisting.getScopes() != null) {
                             if (!urlMappingExisting.getScopes().contains(urlMapping.getScope())) {
                                 urlMappingExisting.setScopes(urlMapping.getScope());
-                                uriTemplateMap.put(urlMappingExisting.getUriTemplate() + urlMappingExisting.getHTTPVerb(),
-                                        urlMappingExisting);
+                                uriTemplateMap.put(urlMappingExisting.getUriTemplate()
+                                                + urlMappingExisting.getHTTPVerb(), urlMappingExisting);
                             }
                         } else {
                             urlMappingNew.setScopes(urlMapping.getScope());
@@ -20178,7 +20206,8 @@ public class ApiMgtDAO {
                         }
                     }
                     PreparedStatement insertClientCertificateStatement = connection
-                            .prepareStatement(SQLConstants.APIRevisionSqlConstants.INSERT_CLIENT_CERTIFICATES_AS_CURRENT_API);
+                            .prepareStatement(SQLConstants
+                                    .APIRevisionSqlConstants.INSERT_CLIENT_CERTIFICATES_AS_CURRENT_API);
                     for (ClientCertificateDTO clientCertificateDTO : clientCertificateDTOS) {
                         insertClientCertificateStatement.setInt(1, tenantId);
                         insertClientCertificateStatement.setString(2, clientCertificateDTO.getAlias());
@@ -20285,7 +20314,8 @@ public class ApiMgtDAO {
                 deleteAPIRevisionMetaData(connection, apiRevision.getApiUUID(), apiRevision.getRevisionUUID());
 
                 // Removing related revision entries from operation policies
-                deleteAllAPISpecificOperationPoliciesByAPIUUID(connection, apiRevision.getApiUUID(), apiRevision.getRevisionUUID());
+                deleteAllAPISpecificOperationPoliciesByAPIUUID(connection, apiRevision.getApiUUID(),
+                        apiRevision.getRevisionUUID());
 
                 // Removing related revision entries from API Endpoints
                 PreparedStatement removeAPIEndpointStatement = connection.prepareStatement(SQLConstants
@@ -20295,7 +20325,8 @@ public class ApiMgtDAO {
                 removeAPIEndpointStatement.executeUpdate();
 
                 // Removing related Custom Backend entries
-                deleteAllCustomBackendsOfAPIRevision(apiRevision.getApiUUID(), apiRevision.getRevisionUUID(), connection);
+                deleteAllCustomBackendsOfAPIRevision(apiRevision.getApiUUID(), apiRevision.getRevisionUUID(),
+                        connection);
 
                 connection.commit();
             } catch (SQLException e) {
