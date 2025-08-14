@@ -550,6 +550,24 @@ public class APIMappingUtil {
         return endpointUrls;
     }
 
+    private static APIURLsDTO extractEndpointUrlsForDiscoveredApi(APIDTO apidto) {
+        JsonElement configElement = new JsonParser().parse(apidto.getApiDefinition());
+        JsonObject configObject = configElement.getAsJsonObject();  //swaggerDefinition as a json object
+        JsonArray servers = configObject.getAsJsonArray("servers");
+        JsonObject server = servers.get(0).getAsJsonObject();
+        String url = server.get("url").getAsString();
+        JsonObject variables = server.getAsJsonObject("variables");
+        JsonObject basePath = variables.getAsJsonObject("basePath");
+        String stageName = basePath.get("default").getAsString();
+        String serverUrl = url.replace("{basePath}", stageName);
+        if (StringUtils.isEmpty(serverUrl)) {
+            return null;
+        }
+        APIURLsDTO apiurLsDTO = new APIURLsDTO();
+        apiurLsDTO.setHttps(serverUrl);
+        return apiurLsDTO;
+    }
+
     private static APIEndpointURLsDTO fromAPIRevisionToEndpoints(APIDTO apidto, Environment environment,
                                                                  String host, String customGatewayUrl,
                                                                  String tenantDomain) throws APIManagementException {
@@ -599,6 +617,7 @@ public class APIMappingUtil {
             GatewayDeployer gatewayDeployer = GatewayHolder.getTenantGatewayInstance(tenantDomain,
                     environment.getName());
             context = gatewayDeployer != null ? "" : context;
+<<<<<<< Updated upstream
 
             String externalReference = APIUtil.getApiExternalApiMappingReferenceByApiId(apidto.getId(),
                     environment.getUuid());
@@ -612,6 +631,32 @@ public class APIMappingUtil {
             }
             if (apidto.getTransport().contains(APIConstants.HTTPS_PROTOCOL)) {
                 apiurLsDTO.setHttps(httpsUrl + context);
+=======
+            if (apidto.isInitiatedFromGateway()) {
+                APIURLsDTO extractedURLs;
+                extractedURLs = extractEndpointUrlsForDiscoveredApi(apidto);
+                if (extractedURLs == null) {
+                    apiurLsDTO.setHttps(vHost.getHttpsUrl());
+                    apiurLsDTO.setHttp(vHost.getHttpUrl());
+                } else {
+                    apiurLsDTO = extractedURLs;
+                }
+            } else {
+                String externalReference = APIUtil.getApiExternalApiMappingReferenceByApiId(apidto.getId(),
+                        environment.getUuid());
+                String httpUrl = gatewayDeployer != null ?
+                        gatewayDeployer.getAPIExecutionURL(externalReference) :
+                        vHost.getHttpUrl();
+                String httpsUrl = gatewayDeployer != null ?
+                        gatewayDeployer.getAPIExecutionURL(externalReference) :
+                        vHost.getHttpsUrl();
+                if (apidto.getTransport().contains(APIConstants.HTTP_PROTOCOL)) {
+                    apiurLsDTO.setHttp(httpUrl + context);
+                }
+                if (apidto.getTransport().contains(APIConstants.HTTPS_PROTOCOL)) {
+                    apiurLsDTO.setHttps(httpsUrl + context);
+                }
+>>>>>>> Stashed changes
             }
         }
         if (isWs || isGQLSubscription) {
