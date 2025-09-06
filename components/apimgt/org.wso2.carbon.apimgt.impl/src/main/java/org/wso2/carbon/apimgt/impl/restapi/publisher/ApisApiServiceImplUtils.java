@@ -34,12 +34,18 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpHead;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
+import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.entity.mime.HttpMultipartMode;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.util.EntityUtils;
 import org.json.JSONArray;
 import org.json.JSONTokener;
 import org.json.simple.JSONObject;
@@ -97,9 +103,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -499,93 +502,53 @@ public class ApisApiServiceImplUtils {
      * @throws ParseException         In the event of any parse errors from the response
      */
     private static String createAuditApi(String collectionId, String apiToken, APIIdentifier apiIdentifier,
-                                         String apiDefinition, String baseUrl, boolean isDebugEnabled, String organization)
+            String apiDefinition, String baseUrl, boolean isDebugEnabled, String organization)
             throws IOException, APIManagementException, ParseException {
-        HttpURLConnection httpConn;
-        OutputStream outputStream;
-        PrintWriter writer;
         String auditUuid = null;
-        URL url = new URL(baseUrl);
-        httpConn = (HttpURLConnection) url.openConnection();
-        httpConn.setUseCaches(false);
-        httpConn.setDoOutput(true); // indicates POST method
-        httpConn.setDoInput(true);
-        httpConn.setRequestProperty(APIConstants.HEADER_CONTENT_TYPE,
-                APIConstants.MULTIPART_CONTENT_TYPE + APIConstants.MULTIPART_FORM_BOUNDARY);
-        httpConn.setRequestProperty(APIConstants.HEADER_ACCEPT, APIConstants.APPLICATION_JSON_MEDIA_TYPE);
-        httpConn.setRequestProperty(APIConstants.HEADER_API_TOKEN, apiToken);
-        httpConn.setRequestProperty(APIConstants.HEADER_USER_AGENT, APIConstants.USER_AGENT_APIM);
-        outputStream = httpConn.getOutputStream();
-        writer = new PrintWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8), true);
-        // Name property
-        writer.append("--" + APIConstants.MULTIPART_FORM_BOUNDARY).append(APIConstants.MULTIPART_LINE_FEED)
-                .append("Content-Disposition: form-data; name=\"name\"")
-                .append(APIConstants.MULTIPART_LINE_FEED).append(APIConstants.MULTIPART_LINE_FEED)
-                .append(apiIdentifier.getApiName()).append(APIConstants.MULTIPART_LINE_FEED);
-        writer.flush();
-        // Specfile property
-        writer.append("--" + APIConstants.MULTIPART_FORM_BOUNDARY).append(APIConstants.MULTIPART_LINE_FEED)
-                .append("Content-Disposition: form-data; name=\"specfile\"; filename=\"swagger.json\"")
-                .append(APIConstants.MULTIPART_LINE_FEED)
-                .append(APIConstants.HEADER_CONTENT_TYPE + ": " + APIConstants.APPLICATION_JSON_MEDIA_TYPE)
-                .append(APIConstants.MULTIPART_LINE_FEED).append(APIConstants.MULTIPART_LINE_FEED)
-                .append(apiDefinition).append(APIConstants.MULTIPART_LINE_FEED);
-        writer.flush();
-        // CollectionID property
-        writer.append("--" + APIConstants.MULTIPART_FORM_BOUNDARY).append(APIConstants.MULTIPART_LINE_FEED)
-                .append("Content-Disposition: form-data; name=\"cid\"").append(APIConstants.MULTIPART_LINE_FEED)
-                .append(APIConstants.MULTIPART_LINE_FEED).append(collectionId)
-                .append(APIConstants.MULTIPART_LINE_FEED);
-        writer.flush();
-        writer.append("--" + APIConstants.MULTIPART_FORM_BOUNDARY + "--")
-                .append(APIConstants.MULTIPART_LINE_FEED);
-        writer.close();
-        // Checks server's status code first
-        int status = httpConn.getResponseCode();
-        if (status == HttpURLConnection.HTTP_OK) {
-            if (isDebugEnabled) {
-                log.debug(HTTP_STATUS_LOG + status);
-            }
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(httpConn.getInputStream(), StandardCharsets.UTF_8));
-            String inputLine;
-            StringBuilder responseString = new StringBuilder();
-
-            while ((inputLine = reader.readLine()) != null) {
-                responseString.append(inputLine);
-            }
-            reader.close();
-            httpConn.disconnect();
-            JSONObject responseJson = (JSONObject) new JSONParser().parse(responseString.toString());
-            auditUuid = (String) ((JSONObject) responseJson.get(APIConstants.DESC)).get(APIConstants.ID);
-            ApiMgtDAO.getInstance().addAuditApiMapping(apiIdentifier, auditUuid, organization);
-        } else {
-            if (httpConn.getErrorStream() != null) {
-                BufferedReader reader =
-                        new BufferedReader(new InputStreamReader(httpConn.getErrorStream(), StandardCharsets.UTF_8));
-                String inputLine;
-                StringBuilder responseString = new StringBuilder();
-
-                while ((inputLine = reader.readLine()) != null) {
-                    responseString.append(inputLine);
+        HttpClient httpClient = APIUtil.getHttpClient(baseUrl);
+        HttpPost httpPost = new HttpPost(baseUrl);
+        MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+        builder.setBoundary(APIConstants.MULTIPART_FORM_BOUNDARY);
+        builder.setCharset(StandardCharsets.UTF_8);
+        builder.setMode(HttpMultipartMode.STRICT);
+        // "name" field (text)
+        builder.addTextBody("name", apiIdentifier.getApiName(),
+                ContentType.TEXT_PLAIN.withCharset(StandardCharsets.UTF_8));
+        // "specfile" field (file part with filename and content type)
+        builder.addBinaryBody("specfile", apiDefinition.getBytes(StandardCharsets.UTF_8),
+                ContentType.create(APIConstants.APPLICATION_JSON_MEDIA_TYPE, StandardCharsets.UTF_8), "swagger.json");
+        // "cid" field (text)
+        builder.addTextBody("cid", collectionId, ContentType.TEXT_PLAIN.withCharset(StandardCharsets.UTF_8));
+        httpPost.setEntity(builder.build());
+        httpPost.setHeader(APIConstants.HEADER_API_TOKEN, apiToken);
+        httpPost.setHeader(APIConstants.HEADER_USER_AGENT, APIConstants.USER_AGENT_APIM);
+        httpPost.setHeader(APIConstants.HEADER_ACCEPT, APIConstants.APPLICATION_JSON_MEDIA_TYPE);
+        try (CloseableHttpResponse response = (CloseableHttpResponse) httpClient.execute(httpPost)) {
+            int statusCode = response.getStatusLine().getStatusCode();
+            String responseString = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+            if (statusCode == HttpURLConnection.HTTP_OK) {
+                if (isDebugEnabled) {
+                    log.debug(HTTP_STATUS_LOG + statusCode);
                 }
-                reader.close();
-                httpConn.disconnect();
-                JSONObject responseJson = (JSONObject) new JSONParser().parse(responseString.toString());
-                String errorMessage = httpConn.getResponseMessage();
-                if (responseJson.containsKey("message")) {
-                    errorMessage = (String) responseJson.get("message");
-                }
-                throw new APIManagementException(
-                        "Error while retrieving data for the API Security Audit Report. Found http status: " +
-                                httpConn.getResponseCode() + " - " + errorMessage);
+                JSONObject responseJson = (JSONObject) new JSONParser().parse(responseString);
+                auditUuid = (String) ((JSONObject) responseJson.get(APIConstants.DESC)).get(APIConstants.ID);
+                ApiMgtDAO.getInstance().addAuditApiMapping(apiIdentifier, auditUuid, organization);
             } else {
+                String errorMessage = response.getStatusLine().getReasonPhrase();
+                try {
+                    JSONObject errorJson = (JSONObject) new JSONParser().parse(responseString);
+                    if (errorJson.containsKey("message")) {
+                        errorMessage = (String) errorJson.get("message");
+                    }
+                } catch (ParseException ignored) {
+                    // response body is not valid JSON, keep default error message
+                }
                 throw new APIManagementException(
-                        "Error while retrieving data for the API Security Audit Report. Found http status: " +
-                                httpConn.getResponseCode() + " - " + httpConn.getResponseMessage());
+                        "Error while retrieving data for the API Security Audit Report. Found http status: "
+                                + statusCode + " - " + errorMessage);
             }
+            return auditUuid;
         }
-        return auditUuid;
     }
 
     /**
